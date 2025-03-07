@@ -440,9 +440,9 @@ export default function OnboardingForm() {
           </Button>
           <Button 
             onClick={handleNext} 
-            className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
+            className="bg-red-600 hover:bg-red-700 text-white"
           >
-            Next
+            Skip
           </Button>
         </div>
       </div>

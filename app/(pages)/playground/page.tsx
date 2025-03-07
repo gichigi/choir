@@ -27,6 +27,8 @@ import {
   Share,
   Sparkles,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/components/ui/use-toast";
 import Link from "next/link";
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -52,6 +54,16 @@ export default function PlaygroundPage() {
   const [systemPrompt, setSystemPrompt] = useState("");
   const [expandedReasoning, setExpandedReasoning] = useState<number[]>([]);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  // Content generation parameters
+  const [contentType, setContentType] = useState("blog-post");
+  const [wordCount, setWordCount] = useState(500);
+  const [readingAge, setReadingAge] = useState(12);
+  const [includeImages, setIncludeImages] = useState(false);
+  const [includeQuotes, setIncludeQuotes] = useState(false);
+  const [includeByline, setIncludeByline] = useState(false);
+  const [additionalDetails, setAdditionalDetails] = useState("");
 
   // Model parameters
   const [temperature, setTemperature] = useState(0.7);
@@ -72,6 +84,30 @@ export default function PlaygroundPage() {
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
+  // Build a system prompt that includes the brand voice and content parameters
+  const buildFullSystemPrompt = () => {
+    let fullPrompt = "You are a content creation assistant that writes in the brand voice of Choir. ";
+    fullPrompt += "The brand voice has these pillars: Simplicity, Transparency, and Playful Sarcasm. ";
+    
+    // Add content generation parameters
+    fullPrompt += `Create ${contentType.replace('-', ' ')} content `;
+    fullPrompt += `that is approximately ${wordCount} words `;
+    fullPrompt += `written at a reading level appropriate for age ${readingAge}. `;
+    
+    // Add toggles
+    if (includeImages) fullPrompt += "Include image suggestions where appropriate. ";
+    if (includeQuotes) fullPrompt += "Include relevant quotes to support key points. ";
+    if (includeByline) fullPrompt += "Include a byline at the end. ";
+    
+    // Add any additional details
+    if (additionalDetails) fullPrompt += `Additional requirements: ${additionalDetails}`;
+    
+    // Add any custom system prompt
+    if (systemPrompt) fullPrompt += "\n\nAdditional instructions: " + systemPrompt;
+    
+    return fullPrompt;
+  };
+
   const { messages, isLoading, input, handleInputChange, handleSubmit } =
     useChat({
       body: {
@@ -81,7 +117,14 @@ export default function PlaygroundPage() {
         topP,
         frequencyPenalty,
         presencePenalty,
-        systemPrompt,
+        systemPrompt: buildFullSystemPrompt(),
+        contentType,
+        wordCount,
+        readingAge,
+        includeImages,
+        includeQuotes,
+        includeByline,
+        additionalDetails
       },
     });
     
@@ -132,8 +175,8 @@ export default function PlaygroundPage() {
           <div className="flex items-center gap-3">
             <Link prefetch={true} href="/">
               <div className="flex items-center gap-2">
-                <Bot className="w-5 h-5" />
-                <h1 className="text-sm font-medium">AI Playground</h1>
+                <Sparkles className="w-5 h-5" />
+                <h1 className="text-sm font-medium">Generate</h1>
               </div>
             </Link>
             <Badge
@@ -142,6 +185,13 @@ export default function PlaygroundPage() {
             >
               {model?.split(":")[1] === "deepseek-reasoner" ? "deepseek-r" : model?.split(":")[1]}
             </Badge>
+            
+            {/* Brand voice badge */}
+            <Badge
+              className="text-xs bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-none"
+            >
+              Using Choir Brand Voice
+            </Badge>
           </div>
           <div className="flex items-center gap-2">
             <ModeToggle />
@@ -149,14 +199,58 @@ export default function PlaygroundPage() {
               size="sm"
               variant="outline"
               className="h-8 text-xs dark:border-zinc-800 border-zinc-200 dark:hover:bg-zinc-900 hover:bg-zinc-100 hidden sm:inline-flex"
+              onClick={() => {
+                // Get the last assistant message
+                const lastAssistantMessage = messages
+                  .filter(m => m.role === "assistant")
+                  .pop();
+                
+                if (lastAssistantMessage) {
+                  navigator.clipboard.writeText(lastAssistantMessage.content);
+                  toast({
+                    title: "Copied to clipboard",
+                    description: "Content has been copied to your clipboard",
+                    duration: 2000
+                  });
+                }
+              }}
             >
-              <Share className="w-3.5 h-3.5 mr-1.5" />
-              Share
+              <Copy className="w-3.5 h-3.5 mr-1.5" />
+              Copy
             </Button>
             <Button
               size="sm"
               variant="outline"
               className="h-8 text-xs dark:border-zinc-800 border-zinc-200 dark:hover:bg-zinc-900 hover:bg-zinc-100 hidden sm:inline-flex"
+              onClick={() => {
+                // Get the last assistant message
+                const lastAssistantMessage = messages
+                  .filter(m => m.role === "assistant")
+                  .pop();
+                
+                if (lastAssistantMessage) {
+                  // Create a blob from the content
+                  const blob = new Blob([lastAssistantMessage.content], {type: 'text/plain'});
+                  const url = URL.createObjectURL(blob);
+                  
+                  // Create an anchor element and trigger the download
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `${contentType.replace('-', '_')}_${new Date().toISOString().split('T')[0]}.txt`;
+                  document.body.appendChild(a);
+                  a.click();
+                  
+                  // Clean up
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                  
+                  toast({
+                    title: "Content exported",
+                    description: "Your content has been exported as a text file",
+                    duration: 2000
+                  });
+                }
+              }}
             >
               <Download className="w-3.5 h-3.5 mr-1.5" />
               Export
@@ -303,7 +397,7 @@ export default function PlaygroundPage() {
       {/* Settings Sidebar */}
       <div className="h-[35vh] lg:h-screen lg:w-80 border-t lg:border-t-0 lg:border-l dark:border-zinc-800 border-zinc-200 dark:bg-black/50 bg-white backdrop-blur-sm">
         <div className="h-full">
-          <Tabs defaultValue="model" className="h-full flex flex-col">
+          <Tabs defaultValue="parameters" className="h-full flex flex-col">
             <TabsList className="w-full dark:bg-zinc-900/50 bg-zinc-100 border dark:border-zinc-800 border-zinc-200">
               <TabsTrigger value="model" className="flex-1 text-xs sm:text-sm">
                 Model
@@ -312,7 +406,7 @@ export default function PlaygroundPage() {
                 Parameters
               </TabsTrigger>
               <TabsTrigger value="system" className="flex-1 text-xs sm:text-sm">
-                System
+                Brand Voice
               </TabsTrigger>
             </TabsList>
 
@@ -354,79 +448,171 @@ export default function PlaygroundPage() {
 
               <TabsContent value="parameters" className="mt-0 space-y-4 h-full">
                 <div className="space-y-4">
+                  {/* Content Type */}
                   <div>
                     <label className="text-xs dark:text-zinc-400 text-zinc-600 mb-2 block">
-                      Temperature ({temperature})
+                      Content Type
+                    </label>
+                    <Select value={contentType} onValueChange={setContentType}>
+                      <SelectTrigger className="dark:bg-zinc-900/50 bg-white border dark:border-zinc-800 border-zinc-200">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="blog-post">Blog Post</SelectItem>
+                        <SelectItem value="social-media">Social Media Post</SelectItem>
+                        <SelectItem value="email">Email</SelectItem>
+                        <SelectItem value="newsletter">Newsletter</SelectItem>
+                        <SelectItem value="product-description">Product Description</SelectItem>
+                        <SelectItem value="landing-page">Landing Page Copy</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Word Count */}
+                  <div>
+                    <label className="text-xs dark:text-zinc-400 text-zinc-600 mb-2 block">
+                      Word Count ({wordCount} words)
                     </label>
                     <Slider
-                      value={[temperature]}
-                      onValueChange={([value]) => setTemperature(value)}
-                      max={2}
-                      step={0.1}
+                      value={[wordCount]}
+                      onValueChange={([value]) => setWordCount(value)}
+                      min={100}
+                      max={2000}
+                      step={50}
                     />
                   </div>
 
+                  {/* Reading Age */}
                   <div>
                     <label className="text-xs dark:text-zinc-400 text-zinc-600 mb-2 block">
-                      Max Tokens ({maxTokens})
+                      Reading Age ({readingAge})
                     </label>
                     <Slider
-                      value={[maxTokens]}
-                      onValueChange={([value]) => setMaxTokens(value)}
-                      max={4000}
-                      step={100}
+                      value={[readingAge]}
+                      onValueChange={([value]) => setReadingAge(value)}
+                      min={8}
+                      max={18}
+                      step={1}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {readingAge <= 10 ? "Simple, accessible language" : 
+                       readingAge <= 14 ? "Moderate complexity, suitable for general audience" :
+                       "Advanced vocabulary and structure"}
+                    </p>
+                  </div>
+
+                  {/* Toggles */}
+                  <div className="space-y-3 pt-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs dark:text-zinc-400 text-zinc-600">
+                        Include Image Suggestions
+                      </label>
+                      <Switch
+                        checked={includeImages}
+                        onCheckedChange={setIncludeImages}
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs dark:text-zinc-400 text-zinc-600">
+                        Include Quotes
+                      </label>
+                      <Switch
+                        checked={includeQuotes}
+                        onCheckedChange={setIncludeQuotes}
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs dark:text-zinc-400 text-zinc-600">
+                        Include Byline
+                      </label>
+                      <Switch
+                        checked={includeByline}
+                        onCheckedChange={setIncludeByline}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Additional Details */}
+                  <div>
+                    <label className="text-xs dark:text-zinc-400 text-zinc-600 mb-2 block">
+                      Additional Details (optional)
+                    </label>
+                    <Textarea
+                      placeholder="Add any specific details or requirements for the content..."
+                      value={additionalDetails}
+                      onChange={(e) => setAdditionalDetails(e.target.value)}
+                      className="h-24 dark:bg-zinc-900/50 bg-white border dark:border-zinc-800 border-zinc-200"
                     />
                   </div>
 
-                  <div>
-                    <label className="text-xs dark:text-zinc-400 text-zinc-600 mb-2 block">
-                      Top P ({topP})
-                    </label>
-                    <Slider
-                      value={[topP]}
-                      onValueChange={([value]) => setTopP(value)}
-                      max={1}
-                      step={0.1}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs dark:text-zinc-400 text-zinc-600 mb-2 block">
-                      Frequency Penalty ({frequencyPenalty})
-                    </label>
-                    <Slider
-                      value={[frequencyPenalty]}
-                      onValueChange={([value]) => setFrequencyPenalty(value)}
-                      max={2}
-                      step={0.1}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs dark:text-zinc-400 text-zinc-600 mb-2 block">
-                      Presence Penalty ({presencePenalty})
-                    </label>
-                    <Slider
-                      value={[presencePenalty]}
-                      onValueChange={([value]) => setPresencePenalty(value)}
-                      max={2}
-                      step={0.1}
-                    />
+                  <div className="border-t dark:border-zinc-800 border-zinc-200 my-4 pt-4">
+                    <p className="text-xs text-muted-foreground mb-3">AI Model Settings</p>
+                    <div>
+                      <label className="text-xs dark:text-zinc-400 text-zinc-600 mb-2 block">
+                        Creativity ({temperature.toFixed(1)})
+                      </label>
+                      <Slider
+                        value={[temperature]}
+                        onValueChange={([value]) => setTemperature(value)}
+                        max={2}
+                        step={0.1}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {temperature < 0.5 ? "More focused and deterministic" : 
+                         temperature < 1.0 ? "Balanced creativity" :
+                         "More varied and creative"}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </TabsContent>
 
               <TabsContent value="system" className="mt-0 space-y-4 h-full">
                 <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs dark:text-zinc-400 text-zinc-600">
+                      Your Brand Voice
+                    </label>
+                    <Badge variant="outline" className="text-xs">Active</Badge>
+                  </div>
+                  
+                  {/* Brand Voice Card */}
+                  <div className="bg-gradient-to-r from-indigo-600/10 to-purple-600/10 border border-indigo-100 dark:border-indigo-900 p-3 rounded-lg mb-4">
+                    <div className="space-y-2">
+                      {/* Brand summary */}
+                      <div className="text-sm font-medium text-indigo-700 dark:text-indigo-300 mb-2">
+                        A modern brand with a distinctive voice that blends simplicity, transparency, and playful wit to connect with audiences in an authentic way.
+                      </div>
+                      
+                      {/* Pillars preview */}
+                      <div className="flex flex-wrap gap-2">
+                        <Badge className="bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 hover:bg-indigo-200">
+                          Simplicity
+                        </Badge>
+                        <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 hover:bg-purple-200">
+                          Transparency
+                        </Badge>
+                        <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 hover:bg-amber-200">
+                          Playful Sarcasm
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                  
                   <label className="text-xs dark:text-zinc-400 text-zinc-600 mb-2 block">
-                    System Prompt
+                    Customize System Prompt (Optional)
                   </label>
                   <Textarea
-                    placeholder="Enter a custom system prompt (leave empty to use default)"
+                    placeholder="Enter a custom system prompt to override or enhance your brand voice instructions"
                     value={systemPrompt}
                     onChange={(e) => setSystemPrompt(e.target.value)}
-                    className="h-[200px] dark:bg-zinc-900/50 bg-white border dark:border-zinc-800 border-zinc-200"
+                    className="h-[150px] dark:bg-zinc-900/50 bg-white border dark:border-zinc-800 border-zinc-200"
                   />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Your brand voice is automatically applied to all generated content. Custom prompts should be used cautiously as they may override brand voice guidance.
+                  </p>
                 </div>
               </TabsContent>
             </div>
