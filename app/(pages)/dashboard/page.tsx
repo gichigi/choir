@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -7,11 +10,36 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Activity, Code, MessageSquare, Star, TrendingUp, Users, Wand2, Zap } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Activity, Code, MessageSquare, Sparkles, TrendingUp, Users, Wand2, Zap } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-export default async function Dashboard() {
+export default function Dashboard() {
+  const router = useRouter();
+  const [contentType, setContentType] = useState("blog post");
+  const [contentLength, setContentLength] = useState("medium");
+  const [topic, setTopic] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    // Redirect to the generate page with the form data as query parameters
+    setTimeout(() => {
+      router.push(`/dashboard/generate?contentType=${encodeURIComponent(contentType)}&length=${contentLength}&topic=${encodeURIComponent(topic)}`);
+    }, 500);
+  };
+
   return (
     <div className="flex flex-col gap-6 p-6">
       <div>
@@ -20,6 +48,98 @@ export default async function Dashboard() {
           Welcome to your Choir dashboard.
         </p>
       </div>
+
+      {/* Content Creation Card */}
+      <Card className="border-indigo-100 dark:border-indigo-900 overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
+          <CardTitle className="text-2xl">Create On-Brand Content</CardTitle>
+          <CardDescription className="text-indigo-100">
+            Generate content that matches your unique brand voice
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label htmlFor="contentType" className="text-sm font-medium">
+                  I want to create a
+                </label>
+                <Select 
+                  value={contentType} 
+                  onValueChange={setContentType}
+                >
+                  <SelectTrigger id="contentType" className="h-12">
+                    <SelectValue placeholder="Select content type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="blog post">Blog Post</SelectItem>
+                    <SelectItem value="linkedin post">LinkedIn Post</SelectItem>
+                    <SelectItem value="twitter post">Twitter Post</SelectItem>
+                    <SelectItem value="tweet thread">Tweet Thread</SelectItem>
+                    <SelectItem value="email newsletter">Email Newsletter</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <label htmlFor="contentLength" className="text-sm font-medium">
+                  that is
+                </label>
+                <Select 
+                  value={contentLength} 
+                  onValueChange={setContentLength}
+                >
+                  <SelectTrigger id="contentLength" className="h-12">
+                    <SelectValue placeholder="Select length" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="short">Short</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="long">Long</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <label htmlFor="topic" className="text-sm font-medium">
+                about
+              </label>
+              <Textarea 
+                id="topic" 
+                placeholder="Enter your topic or brief description..."
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                className="h-24 resize-none"
+                required
+              />
+            </div>
+            
+            <div className="flex justify-end">
+              <Button 
+                type="submit" 
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 h-12 text-lg"
+                disabled={isSubmitting || !topic.trim()}
+              >
+                {isSubmitting ? (
+                  <span className="flex items-center">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Generating...
+                  </span>
+                ) : (
+                  <span className="flex items-center">
+                    <Sparkles className="mr-2 h-5 w-5" />
+                    Generate
+                  </span>
+                )}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
 
       {/* Brand Voice Section */}
       <Card className="border-indigo-100 dark:border-indigo-900">
@@ -79,18 +199,6 @@ export default async function Dashboard() {
             </div>
           </div>
         </CardContent>
-        <CardFooter className="bg-gray-50 dark:bg-gray-800/50 border-t">
-          <div className="flex justify-between items-center w-full">
-            <Button variant="outline" className="gap-2">
-              <Wand2 className="h-4 w-4" />
-              Regenerate
-            </Button>
-            <Button className="bg-indigo-600 hover:bg-indigo-700 gap-2">
-              <MessageSquare className="h-4 w-4" />
-              Generate Content
-            </Button>
-          </div>
-        </CardFooter>
       </Card>
 
       {/* Quick Stats Row */}
@@ -147,11 +255,16 @@ export default async function Dashboard() {
 
       {/* Recent Content */}
       <Card>
-        <CardHeader>
-          <CardTitle>Recent Content</CardTitle>
-          <CardDescription>
-            Content you've generated recently
-          </CardDescription>
+        <CardHeader className="flex justify-between items-center">
+          <div>
+            <CardTitle>Recent Content</CardTitle>
+            <CardDescription>
+              Content you've generated recently
+            </CardDescription>
+          </div>
+          <Link href="/dashboard/content">
+            <Button variant="outline">View All</Button>
+          </Link>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -182,81 +295,49 @@ export default async function Dashboard() {
             ))}
           </div>
         </CardContent>
-        <CardFooter>
-          <Button variant="ghost" className="w-full">View All Content</Button>
-        </CardFooter>
       </Card>
 
-      {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>
-              Common tasks and shortcuts
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Button asChild variant="outline" className="w-full justify-start gap-2">
-              <Link href="/dashboard/content">
-                <MessageSquare className="h-4 w-4" />
-                New Content
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full justify-start gap-2">
-              <Link href="/dashboard/analytics">
-                <TrendingUp className="h-4 w-4" />
-                View Analytics
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full justify-start gap-2">
-              <Link href="/dashboard/settings">
-                <Users className="h-4 w-4" />
-                Invite Team
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle>Content Ideas</CardTitle>
-            <CardDescription>AI-suggested content ideas based on your brand voice</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[
-                {
-                  title: "How Our Transparent Approach Benefits Customers",
-                  description: "A blog post highlighting your transparency pillar with real examples.",
-                  time: "Blog Post"
-                },
-                {
-                  title: "Simple Explanations for Complex Topics in Your Industry",
-                  description: "A series of social posts breaking down difficult concepts.",
-                  time: "Social Media"
-                },
-                {
-                  title: "Behind the Scenes: Our Process Explained",
-                  description: "An email newsletter with a touch of playful commentary.",
-                  time: "Email"
-                }
-              ].map((idea, i) => (
-                <div key={i} className="flex justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-medium">{idea.title}</p>
-                    <p className="text-sm text-muted-foreground">{idea.description}</p>
-                  </div>
-                  <p className="text-xs text-muted-foreground whitespace-nowrap">{idea.time}</p>
+      {/* Content Ideas */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Content Ideas</CardTitle>
+          <CardDescription>AI-suggested content ideas based on your brand voice</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {[
+              {
+                title: "How Our Transparent Approach Benefits Customers",
+                description: "A blog post highlighting your transparency pillar with real examples.",
+                time: "Blog Post"
+              },
+              {
+                title: "Simple Explanations for Complex Topics in Your Industry",
+                description: "A series of social posts breaking down difficult concepts.",
+                time: "Social Media"
+              },
+              {
+                title: "Behind the Scenes: Our Process Explained",
+                description: "An email newsletter with a touch of playful commentary.",
+                time: "Email"
+              }
+            ].map((idea, i) => (
+              <div key={i} className="flex justify-between gap-4 p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors">
+                <div>
+                  <p className="text-sm font-medium">{idea.title}</p>
+                  <p className="text-sm text-muted-foreground">{idea.description}</p>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button variant="ghost" className="w-full">Generate More Ideas</Button>
-          </CardFooter>
-        </Card>
-      </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">{idea.time}</span>
+                  <Button variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-700">
+                    Use
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
