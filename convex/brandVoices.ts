@@ -44,6 +44,7 @@ export const createBrandVoice = mutation({
         iconicBrandInspiration: v.array(v.string()),
       })
     ),
+    businessSummary: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -70,6 +71,7 @@ export const createBrandVoice = mutation({
       userId: identity.subject,
       name: onboardingData.businessName,
       pillars: args.pillars,
+      businessSummary: args.businessSummary,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       onboardingDataId: args.onboardingDataId,

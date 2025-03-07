@@ -109,6 +109,7 @@ export default defineSchema({
     brandVoices: defineTable({
         userId: v.string(),
         name: v.string(), // Name of the brand voice (usually the business name)
+        businessSummary: v.optional(v.string()), // One-line summary of the business
         pillars: v.array(brandVoicePillarValidator),
         createdAt: v.string(),
         updatedAt: v.string(),

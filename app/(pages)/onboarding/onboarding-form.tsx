@@ -16,6 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Fallback brand voice in case the API fails
 const fallbackBrandVoice = {
+  businessSummary: "A modern brand with a distinctive voice that blends simplicity, transparency, and playful wit to connect with audiences in an authentic way.",
   pillars: [
     {
       name: "Simplicity",
@@ -209,21 +210,28 @@ export default function OnboardingForm() {
         throw new Error(errorData.error || 'Failed to generate brand voice');
       }
       
-      const data = await response.json();
+      const responseData = await response.json();
       
       // Validate the response data
-      if (!data || !data.pillars || !Array.isArray(data.pillars) || data.pillars.length === 0) {
+      console.log("API response:", responseData);
+      
+      if (!responseData || !responseData.brandVoice || !responseData.brandVoice.pillars || 
+          !Array.isArray(responseData.brandVoice.pillars) || responseData.brandVoice.pillars.length === 0) {
         throw new Error('Invalid response from brand voice generator');
       }
       
+      // Extract the brandVoice object from the response
+      const brandVoiceData = responseData.brandVoice;
+      
       // Update the onboarding data with the generated brand voice
-      updateOnboardingData({ brandVoice: data });
+      updateOnboardingData({ brandVoice: brandVoiceData });
       
       // Save the brand voice to Convex
       if (onboardingDataId) {
         await createBrandVoice({
           onboardingDataId,
-          pillars: data.pillars,
+          pillars: brandVoiceData.pillars,
+          businessSummary: brandVoiceData.businessSummary,
         });
       }
     } catch (error: any) {
@@ -246,6 +254,7 @@ export default function OnboardingForm() {
           await createBrandVoice({
             onboardingDataId,
             pillars: fallbackBrandVoice.pillars,
+            businessSummary: fallbackBrandVoice.businessSummary,
           });
         } catch (convexError) {
           console.error("Error saving fallback brand voice:", convexError);
@@ -574,10 +583,17 @@ export default function OnboardingForm() {
         )}
 
         {/* Split view for answers and brand voice */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 relative">
+          {/* Visual divider for desktop view */}
+          <div className="hidden lg:block absolute left-1/2 transform -translate-x-1/2 top-10 bottom-10 border-r border-dashed border-indigo-200 dark:border-indigo-800 z-0"></div>
           {/* Left column: User's answers */}
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold mb-4">Your Answers</h3>
+          <div className="space-y-6 relative z-10">
+            <div className="flex items-center">
+              <h3 className="text-lg font-semibold">Your Business Information</h3>
+              <div className="ml-2 px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs rounded-full">
+                Editable
+              </div>
+            </div>
             
             <div className="bg-muted p-6 rounded-lg">
               <div className="flex justify-between items-center mb-4">
@@ -729,73 +745,120 @@ export default function OnboardingForm() {
           </div>
 
           {/* Right column: Brand Voice (or empty state before generation) */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">
-              {onboardingData.brandVoice ? "Your Brand Voice" : "Ready to Generate"}
-            </h3>
+          <div className="relative z-10">
+            <div className="flex items-center mb-4">
+              <h3 className="text-lg font-semibold">
+                {onboardingData.brandVoice ? "Your Brand Voice" : "Ready to Generate"}
+              </h3>
+              {onboardingData.brandVoice && (
+                <div className="ml-2 px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs rounded-full">
+                  Generated
+                </div>
+              )}
+            </div>
 
             {onboardingData.brandVoice ? (
               // Show generated brand voice
               <div className="space-y-6">
-                {onboardingData.brandVoice.pillars.map((pillar, index) => (
-                  <div key={index} className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-indigo-100 dark:border-indigo-900">
-                    <h4 className="text-lg font-semibold text-indigo-600 dark:text-indigo-400 mb-4">
-                      {index + 1}. {pillar.name}
-                    </h4>
-                    
-                    <div className="space-y-4">
-                      <div>
-                        <h5 className="font-medium mb-2">What It Means</h5>
-                        <ul className="list-disc pl-5 space-y-1">
-                          {pillar.whatItMeans.map((point, i) => (
-                            <li key={i} className="text-sm">{point}</li>
-                          ))}
-                        </ul>
+                {/* Business Summary Banner */}
+                {onboardingData.brandVoice.businessSummary && (
+                  <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-5 rounded-lg shadow-md">
+                    <h3 className="text-white text-lg font-medium mb-1">Brand Summary</h3>
+                    <p className="text-white/90 font-medium">{onboardingData.brandVoice.businessSummary}</p>
+                  </div>
+                )}
+                
+                {/* Brand Voice Cards */}
+                <div className="space-y-5">
+                  {onboardingData.brandVoice.pillars.map((pillar, index) => (
+                    <div 
+                      key={index} 
+                      className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-indigo-100 dark:border-indigo-900 shadow-sm hover:shadow transition-all"
+                    >
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-semibold">
+                          {index + 1}
+                        </div>
+                        <h4 className="text-lg font-semibold text-indigo-600 dark:text-indigo-400">
+                          {pillar.name}
+                        </h4>
                       </div>
                       
-                      <div>
-                        <h5 className="font-medium mb-2">What It Doesn't Mean</h5>
-                        <ul className="list-disc pl-5 space-y-1">
-                          {pillar.whatItDoesntMean.map((point, i) => (
-                            <li key={i} className="text-sm">{point}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      
-                      <div>
-                        <h5 className="font-medium mb-2">Iconic Brand Inspiration</h5>
-                        <ul className="list-disc pl-5 space-y-1">
-                          {pillar.iconicBrandInspiration.map((brand, i) => (
-                            <li key={i} className="text-sm">{brand}</li>
-                          ))}
-                        </ul>
+                      <div className="space-y-4">
+                        <div className="bg-indigo-50 dark:bg-indigo-900/10 p-3 rounded-md">
+                          <h5 className="font-medium mb-2 flex items-center">
+                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-2"></span>
+                            What It Means
+                          </h5>
+                          <ul className="list-disc pl-5 space-y-1">
+                            {pillar.whatItMeans.map((point, i) => (
+                              <li key={i} className="text-sm">{point}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        
+                        <div className="bg-red-50 dark:bg-red-900/10 p-3 rounded-md">
+                          <h5 className="font-medium mb-2 flex items-center">
+                            <span className="w-1.5 h-1.5 bg-red-500 rounded-full mr-2"></span>
+                            What It Doesn't Mean
+                          </h5>
+                          <ul className="list-disc pl-5 space-y-1">
+                            {pillar.whatItDoesntMean.map((point, i) => (
+                              <li key={i} className="text-sm">{point}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        
+                        <div className="bg-amber-50 dark:bg-amber-900/10 p-3 rounded-md">
+                          <h5 className="font-medium mb-2 flex items-center">
+                            <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-2"></span>
+                            Iconic Brand Inspiration
+                          </h5>
+                          <ul className="list-disc pl-5 space-y-1">
+                            {pillar.iconicBrandInspiration.map((brand, i) => (
+                              <li key={i} className="text-sm">{brand}</li>
+                            ))}
+                          </ul>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             ) : (
               // Empty state before generation
               <div className="bg-white dark:bg-gray-800 p-8 rounded-lg border border-dashed border-indigo-200 dark:border-indigo-800 flex flex-col items-center text-center">
-                <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mb-4">
-                  <Sparkles className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+                <div className="w-24 h-24 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full flex items-center justify-center mb-6 shadow-lg">
+                  <Sparkles className="w-12 h-12 text-white" />
                 </div>
-                <h4 className="text-xl font-semibold mb-2">Generate Your Brand Voice</h4>
+                <h4 className="text-xl font-semibold mb-3">Create Your Brand Voice</h4>
                 <p className="text-muted-foreground mb-6 max-w-sm">
-                  We'll analyze your answers and create a unique brand voice that captures your company's personality.
+                  We'll analyze your answers and generate a unique brand voice that captures your company's personality.
                 </p>
-                <div className="space-y-3 text-sm text-left w-full max-w-sm">
+                <div className="grid grid-cols-1 gap-3 text-sm text-left w-full max-w-sm bg-indigo-50 dark:bg-indigo-900/10 p-4 rounded-lg">
                   <div className="flex items-center">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 mr-2" />
-                    <span>3 unique brand voice pillars</span>
+                    <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mr-3">
+                      <CheckCircle2 className="w-5 h-5 text-green-500" />
+                    </div>
+                    <span className="font-medium">One-line brand summary</span>
                   </div>
                   <div className="flex items-center">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 mr-2" />
-                    <span>Clear do's and don'ts for each pillar</span>
+                    <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mr-3">
+                      <CheckCircle2 className="w-5 h-5 text-green-500" />
+                    </div>
+                    <span className="font-medium">3 unique brand voice pillars</span>
                   </div>
                   <div className="flex items-center">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 mr-2" />
-                    <span>Examples from iconic brands</span>
+                    <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mr-3">
+                      <CheckCircle2 className="w-5 h-5 text-green-500" />
+                    </div>
+                    <span className="font-medium">Clear do's and don'ts for each pillar</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mr-3">
+                      <CheckCircle2 className="w-5 h-5 text-green-500" />
+                    </div>
+                    <span className="font-medium">Examples from iconic brands</span>
                   </div>
                 </div>
               </div>
@@ -817,7 +880,7 @@ export default function OnboardingForm() {
           Back
         </Button>
         
-        {!onboardingData.brandVoice && (
+        {!onboardingData.brandVoice ? (
           <Button 
             onClick={generateBrandVoice} 
             disabled={isGeneratingVoice || Object.values(isEditing).some(Boolean)}
@@ -825,15 +888,70 @@ export default function OnboardingForm() {
           >
             {isGeneratingVoice ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating...
+                <div className="flex items-center">
+                  <div className="w-5 h-5 relative mr-3">
+                    <div className="w-5 h-5 rounded-full absolute animate-ping bg-indigo-400 opacity-75"></div>
+                    <div className="w-5 h-5 rounded-full relative bg-indigo-500 flex items-center justify-center">
+                      <Sparkles className="w-3 h-3 text-white" />
+                    </div>
+                  </div>
+                  <span className="inline-flex items-center">
+                    Generating Brand Voice
+                    <span className="ml-1 flex space-x-1">
+                      <span className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>
+                      <span className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></span>
+                      <span className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></span>
+                    </span>
+                  </span>
+                </div>
               </>
             ) : !isLoggedIn ? (
-              "Sign in & Generate Brand Voice"
+              <span className="flex items-center">
+                <span className="mr-2">Sign in & Generate Brand Voice</span>
+                <Sparkles className="w-4 h-4" />
+              </span>
             ) : Object.values(isEditing).some(Boolean) ? (
               "Save changes first"
             ) : (
-              "Generate Brand Voice"
+              <span className="flex items-center">
+                <span className="mr-2">Generate Brand Voice</span>
+                <Sparkles className="w-4 h-4" />
+              </span>
+            )}
+          </Button>
+        ) : (
+          <Button 
+            onClick={generateBrandVoice} 
+            disabled={isGeneratingVoice || Object.values(isEditing).some(Boolean)}
+            className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
+            size="sm"
+          >
+            {isGeneratingVoice ? (
+              <>
+                <div className="flex items-center">
+                  <div className="w-5 h-5 relative mr-3">
+                    <div className="w-5 h-5 rounded-full absolute animate-ping bg-indigo-400 opacity-75"></div>
+                    <div className="w-5 h-5 rounded-full relative bg-indigo-500 flex items-center justify-center">
+                      <Sparkles className="w-3 h-3 text-white" />
+                    </div>
+                  </div>
+                  <span className="inline-flex items-center">
+                    Regenerating
+                    <span className="ml-1 flex space-x-1">
+                      <span className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>
+                      <span className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></span>
+                      <span className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></span>
+                    </span>
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center">
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  <span>Regenerate Brand Voice</span>
+                </div>
+              </>
             )}
           </Button>
         )}

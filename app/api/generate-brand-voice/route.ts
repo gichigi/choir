@@ -32,6 +32,9 @@ export async function POST(req: Request) {
       );
     }
 
+    // Create business summary
+    const businessSummary = `${businessName}, founded in ${yearFounded || 'recent years'}, ${businessDescription.split('.')[0]}.`;
+
     // Construct the prompt for brand voice generation
     const prompt = `Generate a brand voice for ${businessName}, a company founded in ${yearFounded || 'recent years'}.
     
@@ -56,6 +59,7 @@ Format the response as a JSON object with the following structure:
 {
   "brandVoice": {
     "companyName": "${businessName}",
+    "businessSummary": "A one-line summary of the business that captures its essence",
     "pillars": [
       {
         "name": "Pillar Name",
@@ -83,38 +87,26 @@ Based on the information provided about the business, create a brand voice with 
 3. Include 3 bullet points explaining what this pillar does NOT mean
 4. Provide 2 examples of iconic brands that exemplify this pillar with brief explanations
 
-Format the response exactly like this:
+Also include a concise one-line business summary that captures the essence of what the company does, who they serve, and what makes them special.
 
-## **[Company Name] Brand Voice**
+IMPORTANT: Your response must be valid JSON with the exact structure:
+{
+  "brandVoice": {
+    "companyName": "Company Name", 
+    "businessSummary": "One-line summary of the business",
+    "pillars": [
+      {
+        "name": "Pillar Name",
+        "whatItMeans": ["Point 1", "Point 2", "Point 3", "Point 4"],
+        "whatItDoesntMean": ["Point 1", "Point 2", "Point 3"],
+        "iconicBrandInspiration": ["Brand 1 – brief explanation", "Brand 2 – brief explanation"]
+      }
+    ],
+    "sampleBlogPost": "A sample blog post introduction."
+  }
+}
 
-### **1. [Pillar Name]**
-
-**What It Means**  
-- [Bullet point 1]
-- [Bullet point 2]
-- [Bullet point 3]
-- [Optional bullet point 4]
-
-**What It Doesn't Mean**  
-- [Bullet point 1]
-- [Bullet point 2]
-- [Bullet point 3]
-
-**Iconic Brand Inspiration**  
-- **[Brand Example 1]** – [brief explanation of how they embody this pillar]
-- **[Brand Example 2]** – [brief explanation of how they embody this pillar]
-
-[Repeat format for pillars 2 and 3]
-
-After the three pillars, include a sample blog post introduction (200-300 words) written in the brand voice to demonstrate how it works in practice.
-
-Ensure that the brand voice is:
-- Distinct and memorable
-- Aligned with the company's values and audience
-- Practical for everyday content creation
-- Consistent across all pillars
-
-Return your response in valid JSON format following the structure specified in the user prompt.`,
+Do not include any markdown formatting, just the JSON object.`,
         },
         {
           role: 'user',
@@ -132,11 +124,27 @@ Return your response in valid JSON format following the structure specified in t
     }
     
     try {
-      const brandVoice = JSON.parse(generatedContent);
+      // Clean the response - sometimes OpenAI might include markdown code block formatting
+      let cleanedContent = generatedContent;
+      if (generatedContent.includes('```json')) {
+        cleanedContent = generatedContent.replace(/```json\n|\n```/g, '');
+      } else if (generatedContent.includes('```')) {
+        cleanedContent = generatedContent.replace(/```\n|\n```/g, '');
+      }
+      
+      console.log("API Response content:", cleanedContent);
+      
+      const brandVoice = JSON.parse(cleanedContent);
       
       // Validate the response structure
       if (!brandVoice.brandVoice || !brandVoice.brandVoice.pillars) {
+        console.error("Invalid response structure:", brandVoice);
         throw new Error('Invalid response structure: missing brandVoice or pillars');
+      }
+
+      // Add fallback business summary if none was generated
+      if (!brandVoice.brandVoice.businessSummary) {
+        brandVoice.brandVoice.businessSummary = businessSummary;
       }
 
       const { pillars } = brandVoice.brandVoice;

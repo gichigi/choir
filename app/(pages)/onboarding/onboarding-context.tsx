@@ -23,6 +23,7 @@ type OnboardingData = {
   companyValues: string;
   additionalInfo: string;
   brandVoice: {
+    businessSummary?: string;
     pillars: BrandVoicePillar[];
   } | null;
 };
