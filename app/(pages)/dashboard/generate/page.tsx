@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,35 +24,207 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, ArrowLeft, Save, Copy, Download, Image, Quote, User, Tag } from "lucide-react";
+import { Loader2, ArrowLeft, Save, Copy, Download, Image, Quote, User, Tag, AlertCircle } from "lucide-react";
 import Link from "next/link";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useToast } from "@/components/ui/use-toast";
+import ReactMarkdown from 'react-markdown';
+
+// Fallback content in case the API fails
+const generateFallbackContent = (topic: string, contentType: string) => {
+  return `# ${topic}
+
+This is a fallback ${contentType} about ${topic}. Our AI content generation service is currently experiencing issues, but we've created this basic content for you.
+
+## Key Points
+
+- This is a placeholder for your ${contentType} about ${topic}
+- You can edit this content to better match your needs
+- When our AI service is back online, you'll be able to generate more tailored content
+
+## Next Steps
+
+1. Edit this content to better suit your needs
+2. Try generating content again later
+3. Contact support if the issue persists
+
+Thank you for your patience!`;
+};
 
 export default function GenerateContentPage() {
   const searchParams = useSearchParams();
-  const contentType = searchParams.get("contentType") || "blog post";
-  const length = searchParams.get("length") || "medium";
-  const topic = searchParams.get("topic") || "";
+  const initialContentType = searchParams.get("contentType") || "blog post";
+  const initialLength = searchParams.get("length") || "medium";
+  const initialTopic = searchParams.get("topic") || "";
   
+  const [contentType, setContentType] = useState(initialContentType);
+  const [topic, setTopic] = useState(initialTopic);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState("");
   const [readingAge, setReadingAge] = useState(16);
-  const [wordCount, setWordCount] = useState(length === "short" ? 300 : length === "medium" ? 600 : 1200);
+  const [wordCount, setWordCount] = useState(initialLength === "short" ? 300 : initialLength === "medium" ? 600 : 1200);
   const [includeImages, setIncludeImages] = useState(false);
   const [includeQuotes, setIncludeQuotes] = useState(false);
   const [includeByline, setIncludeByline] = useState(false);
   const [additionalDetails, setAdditionalDetails] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [title, setTitle] = useState("");
+  const [apiError, setApiError] = useState<string | null>(null);
   
-  const handleGenerate = () => {
-    setIsGenerating(true);
+  const { toast } = useToast();
+  
+  // Get the user's brand voice from Convex
+  const brandVoice = useQuery(api.brandVoices.getUserBrandVoice);
+  
+  // Convex mutation for saving content
+  const saveContent = useMutation(api.content.createContent);
+  
+  // Update word count when length changes
+  useEffect(() => {
+    if (initialLength === "short") {
+      setWordCount(300);
+    } else if (initialLength === "medium") {
+      setWordCount(600);
+    } else if (initialLength === "long") {
+      setWordCount(1200);
+    }
+  }, [initialLength]);
+  
+  const handleGenerate = async () => {
+    if (!topic) {
+      toast({
+        title: "Topic Required",
+        description: "Please enter a topic for your content.",
+        variant: "destructive",
+      });
+      return;
+    }
     
-    // Simulate API call to generate content
-    setTimeout(() => {
-      const mockContent = `# ${topic}\n\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam euismod, nisl eget aliquam ultricies, nunc nisl aliquet nunc, quis aliquam nisl nunc quis nisl. Nullam euismod, nisl eget aliquam ultricies, nunc nisl aliquet nunc, quis aliquam nisl nunc quis nisl.\n\nNullam euismod, nisl eget aliquam ultricies, nunc nisl aliquet nunc, quis aliquam nisl nunc quis nisl. Nullam euismod, nisl eget aliquam ultricies, nunc nisl aliquet nunc, quis aliquam nisl nunc quis nisl.\n\n## Key Points\n\n- Point 1: Important information here\n- Point 2: More critical details\n- Point 3: Final thoughts on the matter\n\nIn conclusion, this ${contentType} about ${topic} demonstrates the brand voice pillars of simplicity, transparency, and playful sarcasm while maintaining a professional tone suitable for your audience.`;
+    setIsGenerating(true);
+    setGeneratedContent("");
+    setApiError(null);
+    
+    try {
+      // Call the OpenAI API to generate content
+      const response = await fetch('/api/generate-content', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contentType,
+          topic,
+          wordCount,
+          readingAge,
+          includeImages,
+          includeQuotes,
+          includeByline,
+          additionalDetails,
+          tags: selectedTags,
+          brandVoice,
+        }),
+      });
       
-      setGeneratedContent(mockContent);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate content');
+      }
+      
+      const data = await response.json();
+      
+      if (!data.content) {
+        throw new Error('No content was generated');
+      }
+      
+      setGeneratedContent(data.content);
+      
+      // Extract a title from the first line if it starts with # or ##
+      const lines = data.content.split('\n');
+      if (lines[0].startsWith('# ')) {
+        setTitle(lines[0].substring(2));
+      } else if (lines[0].startsWith('## ')) {
+        setTitle(lines[0].substring(3));
+      } else {
+        // Use the topic as the title if no heading is found
+        setTitle(topic);
+      }
+    } catch (error: any) {
+      console.error("Error generating content:", error);
+      setApiError(error.message || "Failed to generate content");
+      
+      // Use fallback content
+      toast({
+        title: "Using fallback content",
+        description: "We encountered an issue with the AI service. Using basic content instead.",
+        variant: "warning",
+      });
+      
+      const fallbackContent = generateFallbackContent(topic, contentType);
+      setGeneratedContent(fallbackContent);
+      setTitle(topic);
+    } finally {
       setIsGenerating(false);
-    }, 3000);
+    }
+  };
+  
+  const handleSaveContent = async () => {
+    if (!generatedContent || !brandVoice) {
+      toast({
+        title: "Cannot Save",
+        description: "Please generate content first or ensure you have a brand voice.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      await saveContent({
+        brandVoiceId: brandVoice._id,
+        title: title || topic,
+        type: contentType,
+        content: generatedContent,
+        tags: selectedTags,
+        metadata: {
+          readingLevel: readingAge.toString(),
+          tone: "default",
+          length: wordCount.toString(),
+          targetAudience: additionalDetails,
+        },
+      });
+      
+      toast({
+        title: "Content Saved",
+        description: "Your content has been saved to your library.",
+      });
+    } catch (error) {
+      console.error("Error saving content:", error);
+      toast({
+        title: "Save Failed",
+        description: "Failed to save content. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const handleCopyContent = () => {
+    if (!generatedContent) return;
+    
+    navigator.clipboard.writeText(generatedContent)
+      .then(() => {
+        toast({
+          title: "Copied to Clipboard",
+          description: "Content has been copied to your clipboard.",
+        });
+      })
+      .catch((error) => {
+        console.error("Error copying to clipboard:", error);
+        toast({
+          title: "Copy Failed",
+          description: "Failed to copy content to clipboard.",
+          variant: "destructive",
+        });
+      });
   };
   
   return (
@@ -67,6 +239,16 @@ export default function GenerateContentPage() {
         <h1 className="text-2xl font-bold ml-4">Generate {contentType.charAt(0).toUpperCase() + contentType.slice(1)}</h1>
       </div>
       
+      {apiError && (
+        <div className="mb-6 p-4 border border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg flex items-start">
+          <AlertCircle className="h-5 w-5 text-yellow-600 mr-2 flex-shrink-0" />
+          <div>
+            <p className="font-medium text-yellow-800 dark:text-yellow-200">API Error</p>
+            <p className="text-yellow-700 dark:text-yellow-300 text-sm">{apiError}</p>
+          </div>
+        </div>
+      )}
+      
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Parameters Panel */}
         <div className="lg:col-span-1 space-y-6">
@@ -78,7 +260,10 @@ export default function GenerateContentPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="contentType">Content Type</Label>
-                <Select defaultValue={contentType}>
+                <Select 
+                  defaultValue={contentType}
+                  onValueChange={(value) => setContentType(value)}
+                >
                   <SelectTrigger id="contentType">
                     <SelectValue placeholder="Select content type" />
                   </SelectTrigger>
@@ -98,22 +283,8 @@ export default function GenerateContentPage() {
                   id="topic" 
                   placeholder="Enter your topic" 
                   value={topic} 
-                  onChange={(e) => setAdditionalDetails(e.target.value)}
+                  onChange={(e) => setTopic(e.target.value)}
                 />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="length">Length</Label>
-                <Select defaultValue={length}>
-                  <SelectTrigger id="length">
-                    <SelectValue placeholder="Select length" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="short">Short</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="long">Long</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
               
               <div className="space-y-2">
@@ -188,14 +359,14 @@ export default function GenerateContentPage() {
               <Button 
                 className="w-full bg-indigo-600 hover:bg-indigo-700"
                 onClick={handleGenerate}
-                disabled={isGenerating}
+                disabled={isGenerating || !brandVoice}
               >
                 {isGenerating ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Generating...
                   </>
-                ) : "Generate Content"}
+                ) : !brandVoice ? "Brand Voice Required" : "Generate Content"}
               </Button>
             </CardFooter>
           </Card>
@@ -239,7 +410,7 @@ export default function GenerateContentPage() {
                 {isGenerating ? "Generating content..." : generatedContent ? "Your generated content" : "Content will appear here after generation"}
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex-grow">
+            <CardContent className="flex-grow overflow-auto">
               {isGenerating ? (
                 <div className="h-full flex items-center justify-center">
                   <div className="text-center">
@@ -249,47 +420,43 @@ export default function GenerateContentPage() {
                   </div>
                 </div>
               ) : generatedContent ? (
-                <Tabs defaultValue="preview" className="h-full flex flex-col">
-                  <TabsList className="mb-4">
-                    <TabsTrigger value="preview">Preview</TabsTrigger>
-                    <TabsTrigger value="edit">Edit</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="preview" className="flex-grow overflow-auto whitespace-pre-wrap p-4 bg-gray-50 dark:bg-gray-900 rounded-md">
-                    {generatedContent}
-                  </TabsContent>
-                  <TabsContent value="edit" className="flex-grow">
-                    <Textarea 
-                      value={generatedContent} 
-                      onChange={(e) => setGeneratedContent(e.target.value)} 
-                      className="h-full min-h-[400px] font-mono"
-                    />
-                  </TabsContent>
-                </Tabs>
+                <div className="prose dark:prose-invert max-w-none">
+                  <ReactMarkdown>{generatedContent}</ReactMarkdown>
+                </div>
               ) : (
-                <div className="h-full flex items-center justify-center border-2 border-dashed rounded-md p-8">
-                  <div className="text-center">
-                    <p className="text-lg font-medium">No content generated yet</p>
-                    <p className="text-sm text-muted-foreground mt-2">Adjust parameters and click Generate</p>
+                <div className="h-full flex items-center justify-center text-center p-6">
+                  <div>
+                    <p className="text-lg font-medium mb-2">Ready to create content?</p>
+                    <p className="text-sm text-muted-foreground">
+                      Set your parameters and click "Generate Content" to get started.
+                      {!brandVoice && (
+                        <span className="block mt-2 text-amber-600 dark:text-amber-400">
+                          Note: You need to create a brand voice first. Go to the onboarding process to create one.
+                        </span>
+                      )}
+                    </p>
                   </div>
                 </div>
               )}
             </CardContent>
             {generatedContent && (
-              <CardFooter className="border-t flex justify-between">
+              <CardFooter className="border-t flex justify-between pt-4">
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="gap-1">
-                    <Copy className="h-4 w-4" />
+                  <Button variant="outline" size="sm" onClick={handleCopyContent}>
+                    <Copy className="h-4 w-4 mr-1" />
                     Copy
                   </Button>
-                  <Button variant="outline" size="sm" className="gap-1">
-                    <Download className="h-4 w-4" />
-                    Download
+                  <Button variant="outline" size="sm" onClick={handleSaveContent}>
+                    <Save className="h-4 w-4 mr-1" />
+                    Save
                   </Button>
                 </div>
-                <Button className="bg-green-600 hover:bg-green-700 gap-1">
-                  <Save className="h-4 w-4" />
-                  Save Content
-                </Button>
+                <div>
+                  <Button variant="default" size="sm" className="bg-indigo-600 hover:bg-indigo-700">
+                    <Download className="h-4 w-4 mr-1" />
+                    Export
+                  </Button>
+                </div>
               </CardFooter>
             )}
           </Card>

@@ -6,24 +6,35 @@ import { api } from './convex/_generated/api';
 const isProtectedRoute = createRouteMatcher(['/dashboard(.*)'])
 
 export default clerkMiddleware(async (auth, req) => {
+  // Check if the user is authenticated
+  const isAuthenticated = !!(await auth()).userId;
 
-  const token = (await (await auth()).getToken({ template: "convex" }))
+  // Only check subscription for authenticated users accessing dashboard
+  if (isAuthenticated && req.nextUrl.href.includes('/dashboard')) {
+    const token = (await (await auth()).getToken({ template: "convex" }));
 
+    try {
+      const { hasActiveSubscription } = await fetchQuery(api.subscriptions.getUserSubscriptionStatus, {}, {
+        token: token!,
+      });
 
-  const { hasActiveSubscription } = await fetchQuery(api.subscriptions.getUserSubscriptionStatus, {
-  }, {
-    token: token!,
-  });
-
-  const isDashboard = req.nextUrl.href.includes(`/dashboard`)
-
-  if (isDashboard && !hasActiveSubscription) {
-    const pricingUrl = new URL('/pricing', req.nextUrl.origin)
-    // Redirect to the pricing page
-    return NextResponse.redirect(pricingUrl);
+      if (!hasActiveSubscription) {
+        const pricingUrl = new URL('/pricing', req.nextUrl.origin);
+        // Redirect to the pricing page
+        return NextResponse.redirect(pricingUrl);
+      }
+    } catch (error) {
+      console.error('Error checking subscription status:', error);
+      // If there's an error, redirect to pricing as a fallback
+      const pricingUrl = new URL('/pricing', req.nextUrl.origin);
+      return NextResponse.redirect(pricingUrl);
+    }
   }
 
-  if (isProtectedRoute(req)) await auth.protect()
+  // Protect routes that require authentication
+  if (isProtectedRoute(req)) {
+    await auth.protect();
+  }
 })
 
 export const config = {

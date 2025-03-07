@@ -24,6 +24,13 @@ const intervalPricesValidator = v.object({
     usd: priceValidator,
 });
 
+// Define brand voice pillar structure
+const brandVoicePillarValidator = v.object({
+    name: v.string(),
+    whatItMeans: v.array(v.string()),
+    whatItDoesntMean: v.array(v.string()),
+    iconicBrandInspiration: v.array(v.string()),
+});
 
 export default defineSchema({
     users: defineTable({
@@ -35,6 +42,8 @@ export default defineSchema({
         subscription: v.optional(v.string()),
         credits: v.optional(v.string()),
         tokenIdentifier: v.string(),
+        // Add a reference to the user's brand voice
+        brandVoiceId: v.optional(v.id("brandVoices")),
     }).index("by_token", ["tokenIdentifier"]),
     plans: defineTable({
         key: v.string(),
@@ -80,5 +89,51 @@ export default defineSchema({
     })
         .index("type", ["type"])
         .index("polarEventId", ["polarEventId"]),
-
+    // New table for onboarding data
+    onboardingData: defineTable({
+        userId: v.optional(v.string()), // Optional for non-logged in users
+        sessionId: v.string(), // For tracking non-logged in users
+        businessName: v.string(),
+        yearFounded: v.string(),
+        businessDescription: v.string(),
+        website: v.optional(v.string()),
+        targetAudience: v.string(),
+        companyValues: v.string(),
+        additionalInfo: v.optional(v.string()),
+        createdAt: v.string(),
+        updatedAt: v.string(),
+    })
+        .index("by_userId", ["userId"])
+        .index("by_sessionId", ["sessionId"]),
+    // New table for brand voices
+    brandVoices: defineTable({
+        userId: v.string(),
+        name: v.string(), // Name of the brand voice (usually the business name)
+        pillars: v.array(brandVoicePillarValidator),
+        createdAt: v.string(),
+        updatedAt: v.string(),
+        onboardingDataId: v.id("onboardingData"), // Reference to the onboarding data
+    })
+        .index("by_userId", ["userId"]),
+    // New table for content
+    content: defineTable({
+        userId: v.string(),
+        brandVoiceId: v.id("brandVoices"),
+        title: v.string(),
+        type: v.string(), // blog, social, email, etc.
+        content: v.string(),
+        tags: v.array(v.string()),
+        createdAt: v.string(),
+        updatedAt: v.string(),
+        metadata: v.optional(v.object({
+            readingLevel: v.optional(v.string()),
+            tone: v.optional(v.string()),
+            length: v.optional(v.string()),
+            targetAudience: v.optional(v.string()),
+        })),
+    })
+        .index("by_userId", ["userId"])
+        .index("by_brandVoiceId", ["brandVoiceId"])
+        .index("by_type", ["type"])
+        .index("by_createdAt", ["createdAt"]),
 })

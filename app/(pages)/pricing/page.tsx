@@ -4,9 +4,13 @@ import { AccordionComponent } from "@/components/homepage/accordion-component";
 import Pricing from "@/components/homepage/pricing";
 import PageWrapper from "@/components/wrapper/page-wrapper";
 import { motion } from "framer-motion";
-import { Check, DollarSign } from "lucide-react";
+import { Check, DollarSign, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 export default function PricingPage() {
+  const router = useRouter();
+
   const features = [
     "Authentication & Authorization",
     "Payment Processing",
@@ -20,93 +24,52 @@ export default function PricingPage() {
 
   return (
     <PageWrapper>
-      <div className="container mx-auto px-4">
-        <section className="relative flex flex-col items-center justify-center py-20">
-          {/* Background gradient */}
-          <div className="absolute inset-0 -z-10 h-full w-full bg-white dark:bg-black bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]">
-            <div className="absolute left-0 right-0 top-0 -z-10 m-auto h-[310px] w-[310px] rounded-full bg-blue-400 dark:bg-blue-500 opacity-20 blur-[100px]"></div>
+      <div className="container mx-auto px-4 py-8">
+        {/* Back to onboarding button */}
+        <div className="mb-8">
+          <Button 
+            variant="outline" 
+            className="flex items-center gap-2"
+            onClick={() => router.push('/onboarding')}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Brand Voice Creation
+          </Button>
+        </div>
+        
+        {/* Simplified header */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold mb-4">
+            Choose a Plan to Generate Your Brand Voice
+          </h1>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Select a subscription to unlock your brand voice and start creating consistent, on-brand content.
+          </p>
+        </div>
+
+        {/* Pricing component */}
+        <div className="py-4">
+          <Pricing />
+        </div>
+        
+        {/* Additional information */}
+        <div className="mt-12 text-center">
+          <h2 className="text-2xl font-semibold mb-4">Why Subscribe?</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            <div className="p-6 bg-muted rounded-lg">
+              <h3 className="font-medium text-lg mb-2">Consistent Brand Voice</h3>
+              <p>Maintain a consistent tone and style across all your marketing channels.</p>
+            </div>
+            <div className="p-6 bg-muted rounded-lg">
+              <h3 className="font-medium text-lg mb-2">Save Time</h3>
+              <p>Generate on-brand content in seconds instead of spending hours writing.</p>
+            </div>
+            <div className="p-6 bg-muted rounded-lg">
+              <h3 className="font-medium text-lg mb-2">Stand Out</h3>
+              <p>Differentiate your brand with a unique voice that resonates with your audience.</p>
+            </div>
           </div>
-
-          <div className="space-y-6 text-center">
-            {/* Pill badge */}
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="mx-auto w-fit rounded-full border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-900/30 px-4 py-1 mb-6"
-            >
-              <div className="flex items-center gap-2 text-sm font-medium text-blue-900 dark:text-blue-200">
-                <DollarSign className="h-4 w-4" />
-                <span>Simple, Transparent Pricing</span>
-              </div>
-            </motion.div>
-
-            {/* Main heading */}
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-gray-900 via-blue-800 to-gray-900 dark:from-white dark:via-blue-300 dark:to-white animate-gradient-x pb-2"
-            >
-              Choose Your Perfect Plan
-            </motion.h1>
-
-            {/* Subtitle */}
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="text-lg md:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto"
-            >
-              Get started with our powerful Next.js starter kit and build your
-              next big idea faster than ever
-            </motion.p>
-          </div>
-        </section>
-
-        <section className="py-12">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center mb-16">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="space-y-4"
-            >
-              <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 via-blue-800 to-gray-900 dark:from-white dark:via-blue-300 dark:to-white">
-                Everything You Need
-              </h2>
-              <p className="text-gray-600 dark:text-gray-400">
-                Our starter kit comes packed with all the essential features you
-                need to build modern web applications. No more wasting time on
-                repetitive setups.
-              </p>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 0.4 }}
-              className="grid grid-cols-1 sm:grid-cols-2 gap-4"
-            >
-              {features.map((feature, index) => (
-                <div
-                  key={feature}
-                  className="flex items-center gap-2 text-gray-600 dark:text-gray-400"
-                >
-                  <Check className="h-5 w-5 flex-shrink-0 text-blue-500" />
-                  <span>{feature}</span>
-                </div>
-              ))}
-            </motion.div>
-          </div>
-
-          <div className="py-8">
-            <Pricing />
-          </div>
-        </section>
-
-        <section className="pb-20">
-          <AccordionComponent />
-        </section>
+        </div>
       </div>
     </PageWrapper>
   );

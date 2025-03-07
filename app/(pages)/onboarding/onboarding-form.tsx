@@ -4,10 +4,72 @@ import { useOnboarding } from "./onboarding-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { useAuth } from "@clerk/nextjs";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useToast } from "@/components/ui/use-toast";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+// Fallback brand voice in case the API fails
+const fallbackBrandVoice = {
+  pillars: [
+    {
+      name: "Simplicity",
+      whatItMeans: [
+        "Use plain English and avoid jargon or unnecessary complexity",
+        "Short, punchy sentences that get straight to the point",
+        "Prioritize clarity so anyone can understand our message without a dictionary"
+      ],
+      whatItDoesntMean: [
+        "Dumbing down ideas or skipping important details",
+        "Ignoring nuance when discussing more advanced topics",
+        "Simplistic design or lack of depth in our overall communications"
+      ],
+      iconicBrandInspiration: [
+        "Apple – known for straightforward, minimal copy that resonates with a broad audience",
+        "Slack – keeps instructions and feature explanations short, sweet, and easy to digest"
+      ]
+    },
+    {
+      name: "Transparency",
+      whatItMeans: [
+        "Talk like a human—be honest, open, and inclusive",
+        "Break the 'fourth wall' when appropriate: openly share how and why we're doing something",
+        "Admit mistakes quickly, own up to them, and explain how we plan to fix them"
+      ],
+      whatItDoesntMean: [
+        "Oversharing confidential or sensitive information that compromises trust",
+        "Coming off as unprofessional or flippant about serious matters",
+        "Sacrificing clarity for the sake of extreme transparency (i.e., endless technical details)"
+      ],
+      iconicBrandInspiration: [
+        "Innocent Drinks – casual, friendly tone that's refreshingly honest",
+        "Mailchimp – offers human, plainspoken updates in blog posts and release notes"
+      ]
+    },
+    {
+      name: "Playful Sarcasm/Irony",
+      whatItMeans: [
+        "Lighthearted wit that teases and amuses without disrespecting the reader",
+        "Ironic or tongue-in-cheek commentary to keep things fun",
+        "Occasional humor to stand out in a sea of sterile corporate messages"
+      ],
+      whatItDoesntMean: [
+        "Mean-spirited jokes or personal attacks",
+        "Incessant sarcasm that undermines clarity or trust",
+        "Sacrificing important information or helpful guidance for the sake of a punchline"
+      ],
+      iconicBrandInspiration: [
+        "Wendy's Twitter – famously quick-witted and sarcastic responses (though we'll keep it friendlier)",
+        "Old Spice – playful edge in ads while still promoting the product clearly"
+      ]
+    }
+  ]
+};
 
 export default function OnboardingForm() {
   const {
@@ -17,14 +79,42 @@ export default function OnboardingForm() {
     updateOnboardingData,
     isGeneratingVoice,
     setIsGeneratingVoice,
+    saveToConvex,
+    saveToSession,
+    sessionId,
+    isLoggedIn,
+    onboardingDataId,
+    brandVoiceId,
+    redirectToSignIn,
   } = useOnboarding();
+  
   const router = useRouter();
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState<Record<string, boolean>>({});
+  const { isSignedIn, isLoaded, signUp } = useAuth();
+  const { toast } = useToast();
+  
+  // Convex mutations
+  const createBrandVoice = useMutation(api.brandVoices.createBrandVoice);
 
-  const validateStep = () => {
+  // Save data after each step - only to session, not to Convex
+  useEffect(() => {
+    const saveData = async () => {
+      if (currentStep > 1 && validateStep(currentStep - 1)) {
+        // Just save to session, not to Convex
+        saveToSession();
+      }
+    };
+    
+    saveData();
+  }, [currentStep]);
+
+  const validateStep = (step = currentStep) => {
     const newErrors: Record<string, string> = {};
 
-    if (currentStep === 1) {
+    if (step === 1) {
       if (!onboardingData.businessName.trim()) {
         newErrors.businessName = "Business name is required";
       }
@@ -33,15 +123,15 @@ export default function OnboardingForm() {
       } else if (!/^\d{4}$/.test(onboardingData.yearFounded)) {
         newErrors.yearFounded = "Please enter a valid year (e.g., 2020)";
       }
-    } else if (currentStep === 2) {
+    } else if (step === 2) {
       if (!onboardingData.businessDescription.trim()) {
         newErrors.businessDescription = "Business description is required";
       }
-    } else if (currentStep === 3) {
+    } else if (step === 3) {
       if (!onboardingData.targetAudience.trim()) {
         newErrors.targetAudience = "Target audience is required";
       }
-    } else if (currentStep === 4) {
+    } else if (step === 4) {
       if (!onboardingData.companyValues.trim()) {
         newErrors.companyValues = "Company values are required";
       }
@@ -51,10 +141,24 @@ export default function OnboardingForm() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (validateStep()) {
-      if (currentStep < 6) {
-        setCurrentStep(currentStep + 1);
+      setIsSaving(true);
+      try {
+        // Just save to session, not to Convex
+        saveToSession();
+        if (currentStep < 6) {
+          setCurrentStep(currentStep + 1);
+        }
+      } catch (error) {
+        console.error("Error saving data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to save your data. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSaving(false);
       }
     }
   };
@@ -66,373 +170,750 @@ export default function OnboardingForm() {
   };
 
   const generateBrandVoice = async () => {
-    setIsGeneratingVoice(true);
+    // If user is not logged in, redirect to sign in
+    if (!isLoggedIn) {
+      // Save current data to session
+      saveToSession();
+      // Store the session ID for after sign-in
+      localStorage.setItem("pendingOnboardingSession", sessionId);
+      // Redirect to sign-in page
+      redirectToSignIn();
+      return;
+    }
     
-    // Simulate API call to generate brand voice
-    setTimeout(() => {
-      const mockBrandVoice = {
-        pillars: [
-          {
-            name: "Simplicity",
-            whatItMeans: [
-              "Use plain English and avoid jargon or unnecessary complexity",
-              "Short, punchy sentences that get straight to the point",
-              "Prioritize clarity so anyone can understand our message without a dictionary"
-            ],
-            whatItDoesntMean: [
-              "Dumbing down ideas or skipping important details",
-              "Ignoring nuance when discussing more advanced topics",
-              "Simplistic design or lack of depth in our overall communications"
-            ],
-            iconicBrandInspiration: [
-              "Apple – known for straightforward, minimal copy that resonates with a broad audience",
-              "Slack – keeps instructions and feature explanations short, sweet, and easy to digest"
-            ]
-          },
-          {
-            name: "Transparency",
-            whatItMeans: [
-              "Talk like a human—be honest, open, and inclusive",
-              "Break the 'fourth wall' when appropriate: openly share how and why we're doing something",
-              "Admit mistakes quickly, own up to them, and explain how we plan to fix them"
-            ],
-            whatItDoesntMean: [
-              "Oversharing confidential or sensitive information that compromises trust",
-              "Coming off as unprofessional or flippant about serious matters",
-              "Sacrificing clarity for the sake of extreme transparency (i.e., endless technical details)"
-            ],
-            iconicBrandInspiration: [
-              "Innocent Drinks – casual, friendly tone that's refreshingly honest",
-              "Mailchimp – offers human, plainspoken updates in blog posts and release notes"
-            ]
-          },
-          {
-            name: "Playful Sarcasm/Irony",
-            whatItMeans: [
-              "Lighthearted wit that teases and amuses without disrespecting the reader",
-              "Ironic or tongue-in-cheek commentary to keep things fun",
-              "Occasional humor to stand out in a sea of sterile corporate messages"
-            ],
-            whatItDoesntMean: [
-              "Mean-spirited jokes or personal attacks",
-              "Incessant sarcasm that undermines clarity or trust",
-              "Sacrificing important information or helpful guidance for the sake of a punchline"
-            ],
-            iconicBrandInspiration: [
-              "Wendy's Twitter – famously quick-witted and sarcastic responses (though we'll keep it friendlier)",
-              "Old Spice – playful edge in ads while still promoting the product clearly"
-            ]
-          }
-        ]
-      };
+    setIsGeneratingVoice(true);
+    setApiError(null);
+    
+    try {
+      // Now save to Convex since user is committed
+      await saveToConvex();
       
-      updateOnboardingData({ brandVoice: mockBrandVoice });
+      // Call the OpenAI API to generate the brand voice
+      const response = await fetch('/api/generate-brand-voice', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          businessName: onboardingData.businessName,
+          yearFounded: onboardingData.yearFounded,
+          businessDescription: onboardingData.businessDescription,
+          targetAudience: onboardingData.targetAudience,
+          companyValues: onboardingData.companyValues,
+          additionalInfo: onboardingData.additionalInfo,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate brand voice');
+      }
+      
+      const data = await response.json();
+      
+      // Validate the response data
+      if (!data || !data.pillars || !Array.isArray(data.pillars) || data.pillars.length === 0) {
+        throw new Error('Invalid response from brand voice generator');
+      }
+      
+      // Update the onboarding data with the generated brand voice
+      updateOnboardingData({ brandVoice: data });
+      
+      // Save the brand voice to Convex
+      if (onboardingDataId) {
+        await createBrandVoice({
+          onboardingDataId,
+          pillars: data.pillars,
+        });
+      }
+    } catch (error: any) {
+      console.error("Error generating brand voice:", error);
+      setApiError(error.message || "Failed to generate brand voice");
+      
+      // Use fallback brand voice
+      toast({
+        title: "Using fallback brand voice",
+        description: "We encountered an issue with the AI service. Using a pre-generated brand voice instead.",
+        variant: "warning",
+      });
+      
+      // Update with fallback brand voice
+      updateOnboardingData({ brandVoice: fallbackBrandVoice });
+      
+      // Save the fallback brand voice to Convex
+      if (onboardingDataId) {
+        try {
+          await createBrandVoice({
+            onboardingDataId,
+            pillars: fallbackBrandVoice.pillars,
+          });
+        } catch (convexError) {
+          console.error("Error saving fallback brand voice:", convexError);
+        }
+      }
+    } finally {
       setIsGeneratingVoice(false);
-    }, 3000);
+    }
   };
 
-  const handleComplete = () => {
-    // In a real app, you would save the data to the database here
-    router.push("/dashboard");
+  const handleComplete = async () => {
+    // Final save
+    setIsSaving(true);
+    try {
+      // If the user is not logged in, redirect to sign-in
+      if (!isLoggedIn) {
+        // Save to session
+        saveToSession();
+        // Store the session ID for after sign-in
+        localStorage.setItem("pendingOnboardingSession", sessionId);
+        
+        // Redirect to sign-in page
+        redirectToSignIn();
+        return;
+      }
+      
+      // For logged-in users, save to Convex and redirect to dashboard
+      await saveToConvex();
+      router.push("/dashboard");
+    } catch (error) {
+      console.error("Error completing onboarding:", error);
+      toast({
+        title: "Error",
+        description: "Failed to complete onboarding. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  return (
-    <div className="p-6 md:p-10">
-      {/* Progress indicator */}
-      <div className="mb-8">
-        <div className="flex justify-between mb-2">
-          {[1, 2, 3, 4, 5, 6].map((step) => (
-            <div
-              key={step}
-              className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                currentStep >= step
-                  ? "bg-indigo-600 text-white"
-                  : "bg-gray-200 text-gray-500 dark:bg-gray-700"
-              }`}
-            >
-              {step}
-            </div>
-          ))}
+  // Step 1: Business Information
+  const renderStep1 = () => (
+    <div className="p-8">
+      <h2 className="text-2xl font-bold mb-6">Business Information</h2>
+      <div className="space-y-6">
+        <div>
+          <label htmlFor="businessName" className="block text-sm font-medium mb-1">
+            Business Name
+          </label>
+          <Input
+            id="businessName"
+            value={onboardingData.businessName}
+            onChange={(e) =>
+              updateOnboardingData({ businessName: e.target.value })
+            }
+            placeholder="Enter your business name"
+            className={errors.businessName ? "border-red-500" : ""}
+          />
+          {errors.businessName && (
+            <p className="text-red-500 text-sm mt-1">{errors.businessName}</p>
+          )}
         </div>
-        <div className="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full">
-          <div
-            className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${(currentStep / 6) * 100}%` }}
-          ></div>
+
+        <div>
+          <label htmlFor="yearFounded" className="block text-sm font-medium mb-1">
+            Year Founded
+          </label>
+          <Input
+            id="yearFounded"
+            value={onboardingData.yearFounded}
+            onChange={(e) =>
+              updateOnboardingData({ yearFounded: e.target.value })
+            }
+            placeholder="e.g., 2020"
+            className={errors.yearFounded ? "border-red-500" : ""}
+          />
+          {errors.yearFounded && (
+            <p className="text-red-500 text-sm mt-1">{errors.yearFounded}</p>
+          )}
+        </div>
+        
+        <div className="flex justify-end">
+          <Button 
+            onClick={handleNext} 
+            className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Step 2: Business Description
+  const renderStep2 = () => (
+    <div className="p-8">
+      <h2 className="text-2xl font-bold mb-6">Business Description</h2>
+      <div className="space-y-6">
+        <div className="bg-muted p-4 rounded-lg mb-2">
+          <p className="text-sm">You can either describe your business below or enter your website URL, and we'll analyze it for you.</p>
+        </div>
+        
+        <div>
+          <label htmlFor="businessDescription" className="block text-sm font-medium mb-1">
+            Tell us about your business
+          </label>
+          <Textarea
+            id="businessDescription"
+            value={onboardingData.businessDescription}
+            onChange={(e) =>
+              updateOnboardingData({ businessDescription: e.target.value })
+            }
+            placeholder="What does your business do? What products or services do you offer?"
+            rows={6}
+            className={errors.businessDescription ? "border-red-500" : ""}
+          />
+          {errors.businessDescription && (
+            <p className="text-red-500 text-sm mt-1">{errors.businessDescription}</p>
+          )}
+        </div>
+        
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-muted-foreground/20"></span>
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">Or</span>
+          </div>
+        </div>
+        
+        <div>
+          <label htmlFor="website" className="block text-sm font-medium mb-1">
+            Your website URL
+          </label>
+          <div className="flex gap-2">
+            <Input
+              id="website"
+              value={onboardingData.website}
+              onChange={(e) =>
+                updateOnboardingData({ website: e.target.value })
+              }
+              placeholder="https://yourcompany.com"
+              className="flex-1"
+            />
+            <Button 
+              variant="outline"
+              onClick={() => {
+                // This would typically call an API to analyze the website
+                if (onboardingData.website) {
+                  toast({
+                    title: "Website analysis",
+                    description: "Analyzing your website to extract business information...",
+                  });
+                  // In a real implementation, this would call an API to analyze the website
+                  // and update the business description
+                  setTimeout(() => {
+                    toast({
+                      title: "Analysis complete",
+                      description: "We've extracted information from your website.",
+                    });
+                  }, 2000);
+                } else {
+                  toast({
+                    title: "Website URL required",
+                    description: "Please enter your website URL to analyze.",
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              Analyze
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            We'll analyze your website to extract information about your business.
+          </p>
+        </div>
+
+        <div className="flex justify-between">
+          <Button onClick={handleBack} variant="outline">
+            Back
+          </Button>
+          <Button 
+            onClick={handleNext} 
+            className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Step 3: Target Audience
+  const renderStep3 = () => (
+    <div className="p-8">
+      <h2 className="text-2xl font-bold mb-6">Target Audience</h2>
+      <div className="space-y-6">
+        <div>
+          <label htmlFor="targetAudience" className="block text-sm font-medium mb-1">
+            Who is your target audience?
+          </label>
+          <Textarea
+            id="targetAudience"
+            value={onboardingData.targetAudience}
+            onChange={(e) =>
+              updateOnboardingData({ targetAudience: e.target.value })
+            }
+            placeholder="Describe your ideal customers, their demographics, interests, and pain points."
+            rows={6}
+            className={errors.targetAudience ? "border-red-500" : ""}
+          />
+          {errors.targetAudience && (
+            <p className="text-red-500 text-sm mt-1">{errors.targetAudience}</p>
+          )}
+        </div>
+
+        <div className="flex justify-between">
+          <Button onClick={handleBack} variant="outline">
+            Back
+          </Button>
+          <Button 
+            onClick={handleNext} 
+            className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Step 4: Company Values
+  const renderStep4 = () => (
+    <div className="p-8">
+      <h2 className="text-2xl font-bold mb-6">Company Values</h2>
+      <div className="space-y-6">
+        <div>
+          <label htmlFor="companyValues" className="block text-sm font-medium mb-1">
+            What are your company's core values?
+          </label>
+          <Textarea
+            id="companyValues"
+            value={onboardingData.companyValues}
+            onChange={(e) =>
+              updateOnboardingData({ companyValues: e.target.value })
+            }
+            placeholder="List your company's core values and what they mean to your business."
+            rows={6}
+            className={errors.companyValues ? "border-red-500" : ""}
+          />
+          {errors.companyValues && (
+            <p className="text-red-500 text-sm mt-1">{errors.companyValues}</p>
+          )}
+        </div>
+
+        <div className="flex justify-between">
+          <Button onClick={handleBack} variant="outline">
+            Back
+          </Button>
+          <Button 
+            onClick={handleNext} 
+            className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Step 5: Additional Information
+  const renderStep5 = () => (
+    <div className="p-8">
+      <h2 className="text-2xl font-bold mb-6">Additional Information</h2>
+      <div className="space-y-4">
+        <div>
+          <label htmlFor="additionalInfo" className="block text-sm font-medium mb-1">
+            Any additional information about your brand voice?
+          </label>
+          <Textarea
+            id="additionalInfo"
+            value={onboardingData.additionalInfo}
+            onChange={(e) =>
+              updateOnboardingData({ additionalInfo: e.target.value })
+            }
+            placeholder="Share any specific tone, style preferences, or examples of content you like..."
+            rows={6}
+          />
+        </div>
+      </div>
+      
+      <div className="flex justify-between items-center mt-8">
+        <Button onClick={handleBack} variant="outline">
+          Back
+        </Button>
+        <Button 
+          onClick={handleNext} 
+          className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
+        >
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+
+  // Step 6: Brand Voice Generation
+  const renderStep6 = () => (
+    <div className="p-8">
+      <h2 className="text-2xl font-bold mb-6">Review & Generate Your Brand Voice</h2>
+      
+      <div className="mb-8">
+        <p className="mb-4">
+          Review and edit your answers below before generating your unique brand voice.
+        </p>
+        
+        {!isLoggedIn && (
+          <Alert className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Sign in required</AlertTitle>
+            <AlertDescription>
+              You'll need to sign in or create an account to generate your brand voice. Your answers will be saved.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Split view for answers and brand voice */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left column: User's answers */}
+          <div className="space-y-6">
+            <h3 className="text-lg font-semibold mb-4">Your Answers</h3>
+            
+            <div className="bg-muted p-6 rounded-lg">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-semibold">Business Details</h3>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-indigo-600"
+                  onClick={() => setIsEditing(prev => ({ ...prev, businessDetails: !prev.businessDetails }))}
+                >
+                  {isEditing.businessDetails ? "Save" : "Edit"}
+                </Button>
+              </div>
+              {isEditing.businessDetails ? (
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Business Name</label>
+                    <Input
+                      value={onboardingData.businessName}
+                      onChange={(e) => updateOnboardingData({ businessName: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Year Founded</label>
+                    <Input
+                      value={onboardingData.yearFounded}
+                      onChange={(e) => updateOnboardingData({ yearFounded: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Business Description</label>
+                    <Textarea
+                      value={onboardingData.businessDescription}
+                      onChange={(e) => updateOnboardingData({ businessDescription: e.target.value })}
+                      className="mt-1"
+                      rows={4}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <dl className="space-y-2">
+                  <div>
+                    <dt className="text-sm font-medium text-muted-foreground">Business Name</dt>
+                    <dd>{onboardingData.businessName}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-muted-foreground">Year Founded</dt>
+                    <dd>{onboardingData.yearFounded || "Not specified"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-muted-foreground">Business Description</dt>
+                    <dd className="whitespace-pre-wrap">{onboardingData.businessDescription}</dd>
+                  </div>
+                </dl>
+              )}
+            </div>
+
+            <div className="bg-muted p-6 rounded-lg">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-semibold">Target Audience</h3>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-indigo-600"
+                  onClick={() => setIsEditing(prev => ({ ...prev, targetAudience: !prev.targetAudience }))}
+                >
+                  {isEditing.targetAudience ? "Save" : "Edit"}
+                </Button>
+              </div>
+              {isEditing.targetAudience ? (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Target Audience Description</label>
+                  <Textarea
+                    value={onboardingData.targetAudience}
+                    onChange={(e) => updateOnboardingData({ targetAudience: e.target.value })}
+                    className="mt-1"
+                    rows={4}
+                  />
+                </div>
+              ) : (
+                <dl>
+                  <dt className="text-sm font-medium text-muted-foreground">Target Audience Description</dt>
+                  <dd className="whitespace-pre-wrap">{onboardingData.targetAudience}</dd>
+                </dl>
+              )}
+            </div>
+
+            <div className="bg-muted p-6 rounded-lg">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-semibold">Company Values</h3>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-indigo-600"
+                  onClick={() => setIsEditing(prev => ({ ...prev, companyValues: !prev.companyValues }))}
+                >
+                  {isEditing.companyValues ? "Save" : "Edit"}
+                </Button>
+              </div>
+              {isEditing.companyValues ? (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Core Values</label>
+                  <Textarea
+                    value={onboardingData.companyValues}
+                    onChange={(e) => updateOnboardingData({ companyValues: e.target.value })}
+                    className="mt-1"
+                    rows={4}
+                  />
+                </div>
+              ) : (
+                <dl>
+                  <dt className="text-sm font-medium text-muted-foreground">Core Values</dt>
+                  <dd className="whitespace-pre-wrap">{onboardingData.companyValues}</dd>
+                </dl>
+              )}
+            </div>
+
+            <div className="bg-muted p-6 rounded-lg">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-semibold">Additional Information</h3>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-indigo-600"
+                  onClick={() => setIsEditing(prev => ({ ...prev, additionalInfo: !prev.additionalInfo }))}
+                >
+                  {isEditing.additionalInfo ? "Save" : "Edit"}
+                </Button>
+              </div>
+              {isEditing.additionalInfo ? (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Additional Details</label>
+                  <Textarea
+                    value={onboardingData.additionalInfo}
+                    onChange={(e) => updateOnboardingData({ additionalInfo: e.target.value })}
+                    className="mt-1"
+                    rows={4}
+                  />
+                </div>
+              ) : (
+                <dl>
+                  <dt className="text-sm font-medium text-muted-foreground">Additional Details</dt>
+                  <dd className="whitespace-pre-wrap">{onboardingData.additionalInfo || "None provided"}</dd>
+                </dl>
+              )}
+            </div>
+          </div>
+
+          {/* Right column: Brand Voice (or empty state before generation) */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4">
+              {onboardingData.brandVoice ? "Your Brand Voice" : "Ready to Generate"}
+            </h3>
+
+            {onboardingData.brandVoice ? (
+              // Show generated brand voice
+              <div className="space-y-6">
+                {onboardingData.brandVoice.pillars.map((pillar, index) => (
+                  <div key={index} className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-indigo-100 dark:border-indigo-900">
+                    <h4 className="text-lg font-semibold text-indigo-600 dark:text-indigo-400 mb-4">
+                      {index + 1}. {pillar.name}
+                    </h4>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <h5 className="font-medium mb-2">What It Means</h5>
+                        <ul className="list-disc pl-5 space-y-1">
+                          {pillar.whatItMeans.map((point, i) => (
+                            <li key={i} className="text-sm">{point}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      
+                      <div>
+                        <h5 className="font-medium mb-2">What It Doesn't Mean</h5>
+                        <ul className="list-disc pl-5 space-y-1">
+                          {pillar.whatItDoesntMean.map((point, i) => (
+                            <li key={i} className="text-sm">{point}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      
+                      <div>
+                        <h5 className="font-medium mb-2">Iconic Brand Inspiration</h5>
+                        <ul className="list-disc pl-5 space-y-1">
+                          {pillar.iconicBrandInspiration.map((brand, i) => (
+                            <li key={i} className="text-sm">{brand}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              // Empty state before generation
+              <div className="bg-white dark:bg-gray-800 p-8 rounded-lg border border-dashed border-indigo-200 dark:border-indigo-800 flex flex-col items-center text-center">
+                <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mb-4">
+                  <Sparkles className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <h4 className="text-xl font-semibold mb-2">Generate Your Brand Voice</h4>
+                <p className="text-muted-foreground mb-6 max-w-sm">
+                  We'll analyze your answers and create a unique brand voice that captures your company's personality.
+                </p>
+                <div className="space-y-3 text-sm text-left w-full max-w-sm">
+                  <div className="flex items-center">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 mr-2" />
+                    <span>3 unique brand voice pillars</span>
+                  </div>
+                  <div className="flex items-center">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 mr-2" />
+                    <span>Clear do's and don'ts for each pillar</span>
+                  </div>
+                  <div className="flex items-center">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 mr-2" />
+                    <span>Examples from iconic brands</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {apiError && (
+          <Alert variant="destructive" className="mt-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{apiError}</AlertDescription>
+          </Alert>
+        )}
+      </div>
+      
+      <div className="flex justify-between items-center">
+        <Button onClick={handleBack} variant="outline" disabled={isGeneratingVoice}>
+          Back
+        </Button>
+        
+        {!onboardingData.brandVoice && (
+          <Button 
+            onClick={generateBrandVoice} 
+            disabled={isGeneratingVoice || Object.values(isEditing).some(Boolean)}
+            className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
+          >
+            {isGeneratingVoice ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Generating...
+              </>
+            ) : !isLoggedIn ? (
+              "Sign in & Generate Brand Voice"
+            ) : Object.values(isEditing).some(Boolean) ? (
+              "Save changes first"
+            ) : (
+              "Generate Brand Voice"
+            )}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+
+  // Render the current step
+  return (
+    <div className="min-h-[600px]">
+      {/* Progress indicator */}
+      <div className="bg-muted px-8 py-4">
+        <div className="flex justify-between items-center">
+          <div className="text-sm font-medium">
+            Step {currentStep} of 6
+          </div>
+          <div className="w-2/3 bg-gray-200 rounded-full h-2.5">
+            <div
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 h-2.5 rounded-full"
+              style={{ width: `${(currentStep / 6) * 100}%` }}
+            ></div>
+          </div>
         </div>
       </div>
 
+      {/* Step content */}
       <AnimatePresence mode="wait">
         <motion.div
           key={currentStep}
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.3 }}
+          transition={{ duration: 0.2 }}
         >
-          {currentStep === 1 && (
-            <div>
-              <h2 className="text-2xl font-bold mb-6">Business Information</h2>
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="businessName" className="block text-sm font-medium mb-1">
-                    Business Name
-                  </label>
-                  <Input
-                    id="businessName"
-                    value={onboardingData.businessName}
-                    onChange={(e) =>
-                      updateOnboardingData({ businessName: e.target.value })
-                    }
-                    placeholder="e.g., Acme Corporation"
-                    className={errors.businessName ? "border-red-500" : ""}
-                  />
-                  {errors.businessName && (
-                    <p className="text-red-500 text-sm mt-1">{errors.businessName}</p>
-                  )}
-                </div>
-                <div>
-                  <label htmlFor="yearFounded" className="block text-sm font-medium mb-1">
-                    Year Founded
-                  </label>
-                  <Input
-                    id="yearFounded"
-                    value={onboardingData.yearFounded}
-                    onChange={(e) =>
-                      updateOnboardingData({ yearFounded: e.target.value })
-                    }
-                    placeholder="e.g., 2020"
-                    className={errors.yearFounded ? "border-red-500" : ""}
-                  />
-                  {errors.yearFounded && (
-                    <p className="text-red-500 text-sm mt-1">{errors.yearFounded}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {currentStep === 2 && (
-            <div>
-              <h2 className="text-2xl font-bold mb-6">Business Description</h2>
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="businessDescription" className="block text-sm font-medium mb-1">
-                    What does your business do?
-                  </label>
-                  <Textarea
-                    id="businessDescription"
-                    value={onboardingData.businessDescription}
-                    onChange={(e) =>
-                      updateOnboardingData({ businessDescription: e.target.value })
-                    }
-                    placeholder="Describe your products, services, and mission..."
-                    rows={6}
-                    className={errors.businessDescription ? "border-red-500" : ""}
-                  />
-                  {errors.businessDescription && (
-                    <p className="text-red-500 text-sm mt-1">{errors.businessDescription}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {currentStep === 3 && (
-            <div>
-              <h2 className="text-2xl font-bold mb-6">Target Audience</h2>
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="targetAudience" className="block text-sm font-medium mb-1">
-                    Who is your target audience?
-                  </label>
-                  <Textarea
-                    id="targetAudience"
-                    value={onboardingData.targetAudience}
-                    onChange={(e) =>
-                      updateOnboardingData({ targetAudience: e.target.value })
-                    }
-                    placeholder="Describe your ideal customers, their demographics, interests, and pain points..."
-                    rows={6}
-                    className={errors.targetAudience ? "border-red-500" : ""}
-                  />
-                  {errors.targetAudience && (
-                    <p className="text-red-500 text-sm mt-1">{errors.targetAudience}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {currentStep === 4 && (
-            <div>
-              <h2 className="text-2xl font-bold mb-6">Company Values</h2>
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="companyValues" className="block text-sm font-medium mb-1">
-                    What are your company's core values?
-                  </label>
-                  <Textarea
-                    id="companyValues"
-                    value={onboardingData.companyValues}
-                    onChange={(e) =>
-                      updateOnboardingData({ companyValues: e.target.value })
-                    }
-                    placeholder="List your core values and what they mean to your company..."
-                    rows={6}
-                    className={errors.companyValues ? "border-red-500" : ""}
-                  />
-                  {errors.companyValues && (
-                    <p className="text-red-500 text-sm mt-1">{errors.companyValues}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {currentStep === 5 && (
-            <div>
-              <h2 className="text-2xl font-bold mb-6">Additional Information</h2>
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="additionalInfo" className="block text-sm font-medium mb-1">
-                    Any additional information you'd like to share?
-                  </label>
-                  <Textarea
-                    id="additionalInfo"
-                    value={onboardingData.additionalInfo}
-                    onChange={(e) =>
-                      updateOnboardingData({ additionalInfo: e.target.value })
-                    }
-                    placeholder="Anything else that would help us understand your brand better..."
-                    rows={6}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {currentStep === 6 && (
-            <div>
-              <h2 className="text-2xl font-bold mb-6">Review & Generate Brand Voice</h2>
-              
-              <div className="space-y-6 mb-8">
-                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                  <h3 className="font-medium mb-2">Business Information</h3>
-                  <p><span className="font-medium">Name:</span> {onboardingData.businessName}</p>
-                  <p><span className="font-medium">Founded:</span> {onboardingData.yearFounded}</p>
-                </div>
-                
-                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                  <h3 className="font-medium mb-2">Business Description</h3>
-                  <p>{onboardingData.businessDescription}</p>
-                </div>
-                
-                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                  <h3 className="font-medium mb-2">Target Audience</h3>
-                  <p>{onboardingData.targetAudience}</p>
-                </div>
-                
-                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                  <h3 className="font-medium mb-2">Company Values</h3>
-                  <p>{onboardingData.companyValues}</p>
-                </div>
-                
-                {onboardingData.additionalInfo && (
-                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                    <h3 className="font-medium mb-2">Additional Information</h3>
-                    <p>{onboardingData.additionalInfo}</p>
-                  </div>
-                )}
-              </div>
-              
-              {!onboardingData.brandVoice && !isGeneratingVoice && (
-                <Button 
-                  onClick={generateBrandVoice} 
-                  className="w-full bg-indigo-600 hover:bg-indigo-700"
-                >
-                  Generate Brand Voice
-                </Button>
-              )}
-              
-              {isGeneratingVoice && (
-                <div className="text-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-indigo-600" />
-                  <p className="text-lg">Generating your unique brand voice...</p>
-                  <p className="text-sm text-gray-500 mt-2">This may take a moment</p>
-                </div>
-              )}
-              
-              {onboardingData.brandVoice && (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-center gap-2 text-green-600">
-                    <CheckCircle2 className="h-6 w-6" />
-                    <span className="text-lg font-medium">Brand Voice Generated!</span>
-                  </div>
-                  
-                  <div className="space-y-6">
-                    {onboardingData.brandVoice.pillars.map((pillar, index) => (
-                      <div key={index} className="bg-indigo-50 dark:bg-indigo-900/20 p-6 rounded-lg border border-indigo-200 dark:border-indigo-800">
-                        <h3 className="text-xl font-bold mb-4 text-indigo-700 dark:text-indigo-300">
-                          {index + 1}. {pillar.name}
-                        </h3>
-                        
-                        <div className="mb-4">
-                          <h4 className="font-medium mb-2 text-indigo-600 dark:text-indigo-400">What It Means</h4>
-                          <ul className="list-disc pl-5 space-y-1">
-                            {pillar.whatItMeans.map((item, i) => (
-                              <li key={i}>{item}</li>
-                            ))}
-                          </ul>
-                        </div>
-                        
-                        <div className="mb-4">
-                          <h4 className="font-medium mb-2 text-indigo-600 dark:text-indigo-400">What It Doesn't Mean</h4>
-                          <ul className="list-disc pl-5 space-y-1">
-                            {pillar.whatItDoesntMean.map((item, i) => (
-                              <li key={i}>{item}</li>
-                            ))}
-                          </ul>
-                        </div>
-                        
-                        <div>
-                          <h4 className="font-medium mb-2 text-indigo-600 dark:text-indigo-400">Iconic Brand Inspiration</h4>
-                          <ul className="list-disc pl-5 space-y-1">
-                            {pillar.iconicBrandInspiration.map((item, i) => (
-                              <li key={i}>{item}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  <Button 
-                    onClick={handleComplete} 
-                    className="w-full bg-green-600 hover:bg-green-700 mt-4"
-                  >
-                    Continue to Dashboard
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
+          {currentStep === 1 && renderStep1()}
+          {currentStep === 2 && renderStep2()}
+          {currentStep === 3 && renderStep3()}
+          {currentStep === 4 && renderStep4()}
+          {currentStep === 5 && renderStep5()}
+          {currentStep === 6 && renderStep6()}
         </motion.div>
       </AnimatePresence>
 
-      <div className="flex justify-between mt-8">
+      <div className="mt-8 flex justify-between">
         <Button
           variant="outline"
           onClick={handleBack}
-          disabled={currentStep === 1}
+          disabled={currentStep === 1 || isSaving}
         >
           Back
         </Button>
         
-        {currentStep < 6 && (
-          <Button onClick={handleNext}>
-            Next
+        {currentStep < 6 ? (
+          <Button onClick={handleNext} disabled={isSaving}>
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Next"
+            )}
           </Button>
+        ) : (
+          onboardingData.brandVoice && (
+            <Button
+              onClick={handleComplete}
+              disabled={isSaving}
+              className="bg-green-600 hover:bg-green-500"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Go to Dashboard"
+              )}
+            </Button>
+          )
         )}
       </div>
     </div>

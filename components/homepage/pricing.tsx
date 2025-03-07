@@ -95,6 +95,13 @@ const PricingCard = ({
 
   const handleCheckout = async (interval: "month" | "year") => {
     try {
+      // Store the onboarding session ID if it exists
+      const pendingSessionId = localStorage.getItem('pendingOnboardingSession');
+      if (pendingSessionId) {
+        // Keep it in localStorage so we can retrieve it after checkout
+        localStorage.setItem('checkoutFromOnboarding', 'true');
+      }
+      
       const checkoutProUrl = await getProCheckoutUrl({
         interval
       });
@@ -204,7 +211,7 @@ export default function Pricing() {
       title: "Free",
       monthlyPrice: 0,
       yearlyPrice: 0,
-      description: "For individuals who want to dip their toes in the water.",
+      description: "For individuals who want to try out brand voice generation.",
       features: [
         "1 brand voice profile",
         "10 content generations/month",
@@ -218,7 +225,7 @@ export default function Pricing() {
       title: "Pro",
       monthlyPrice: 12,
       yearlyPrice: 99,
-      description: "For serious content creators who are tired of sounding generic.",
+      description: "For serious content creators who need consistent brand messaging.",
       features: [
         "Unlimited brand voices",
         "Unlimited content generations",
@@ -226,14 +233,14 @@ export default function Pricing() {
         "Priority support (like, actual humans)",
         "Content library & organization",
       ],
-      actionLabel: "Get Pro",
+      actionLabel: "Get Pro & Generate Brand Voice",
       popular: true,
     },
     {
       title: "Teams",
       monthlyPrice: 49,
       yearlyPrice: 490,
-      description: "For teams who need to keep everyone on the same page.",
+      description: "For teams who need to maintain brand consistency across departments.",
       features: [
         "Everything in Pro",
         "Team collaboration features",
@@ -247,29 +254,33 @@ export default function Pricing() {
   ];
 
   return (
-    <section className="px-4 py-24 bg-gray-50 dark:bg-gray-900/50">
-      <div className="max-w-7xl mx-auto">
-        <PricingHeader
-          title="Pricing That Makes Sense"
-          subtitle="No hidden fees, no complicated tiers, no 'contact us for pricing' nonsense. Just pick a plan and get started."
-        />
+    <section className="py-8">
+      <div className="container mx-auto">
         <PricingSwitch onSwitch={togglePricingPeriod} />
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          viewport={{ once: true }}
-          className="flex flex-col md:flex-row justify-center gap-6 mt-10"
-        >
+        
+        <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-8 justify-center">
           {plans.map((plan) => (
             <PricingCard
               key={plan.title}
               user={user}
-              {...plan}
               isYearly={isYearly}
+              title={plan.title}
+              monthlyPrice={plan.monthlyPrice}
+              yearlyPrice={plan.yearlyPrice}
+              description={plan.description}
+              features={plan.features}
+              actionLabel={plan.actionLabel}
+              popular={plan.popular}
+              exclusive={plan.exclusive}
             />
           ))}
-        </motion.div>
+        </div>
+        
+        <div className="mt-12 text-center">
+          <p className="text-muted-foreground">
+            All plans include a 14-day money-back guarantee. No questions asked.
+          </p>
+        </div>
       </div>
     </section>
   );
