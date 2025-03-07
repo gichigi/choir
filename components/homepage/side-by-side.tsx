@@ -1,25 +1,25 @@
 "use client"
-import { Computer, Network, Sparkles } from 'lucide-react'
-import { FaBusinessTime } from 'react-icons/fa'
+import { MessageSquare, Sparkles, Wand2 } from 'lucide-react'
+import { FaRegClock } from 'react-icons/fa'
 import { OrbitingCirclesComponent } from './orbiting-circles'
 import { motion } from "motion/react"
 
 const features = [
   {
-    name: 'Build faster',
+    name: 'Generate a Brand Voice in Minutes',
     description:
-      'Get up and running in no time with pre-configured settings and best practices. Say goodbye to setup and focus on what truly matters - building your application.',
-    icon: Computer,
+      'Answer a few quick questions about your business, and Choir crafts a unique voice profile that captures your brand essence.',
+    icon: Wand2,
   },
   {
-    name: 'Focus on business logic',
-    description: 'Concentrate on solving business problems instead of dealing with the repetitive setup.',
-    icon: FaBusinessTime,
+    name: 'Consistent Messaging Across Channels',
+    description: 'Eliminate inconsistencies in your brand communication. Choir ensures your voice remains consistent across all marketing channels.',
+    icon: MessageSquare,
   },
   {
-    name: 'Ready for scale',
-    description: 'Prepare for growth from day one. With built-in optimizations and scalable architecture, your application will be ready to handle increased traffic and complexity.',
-    icon: Network,
+    name: 'Save Time and Resources',
+    description: 'Stop wasting hours manually enforcing style guidelines. Choir automates the process, letting you focus on strategy instead of execution.',
+    icon: FaRegClock,
   },
 ]
 
@@ -37,18 +37,18 @@ export default function SideBySide() {
           >
             <div className="lg:max-w-lg">
               {/* Pill badge */}
-              <div className="mb-6 w-fit rounded-full border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-900/30 px-4 py-1">
-                <div className="flex items-center gap-2 text-sm font-medium text-blue-900 dark:text-blue-200">
+              <div className="mb-6 w-fit rounded-full border border-indigo-200 dark:border-indigo-900 bg-indigo-50 dark:bg-indigo-900/30 px-4 py-1">
+                <div className="flex items-center gap-2 text-sm font-medium text-indigo-900 dark:text-indigo-200">
                   <Sparkles className="h-4 w-4" />
-                  <span>Why Choose Next Starter</span>
+                  <span>Why Choose Choir</span>
                 </div>
               </div>
 
-              <h2 className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 via-blue-800 to-gray-900 dark:from-white dark:via-blue-300 dark:to-white pb-2">
-                A Faster Path to Production
+              <h2 className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 via-indigo-800 to-gray-900 dark:from-white dark:via-indigo-300 dark:to-white pb-2">
+                Your Brand Voice, Perfected
               </h2>
               <p className="mt-6 text-lg text-gray-600 dark:text-gray-300">
-                Accelerate your development with our powerful Next.js starter kit. Focus on building features, not infrastructure.
+                Choir captures your unique brand voice and helps you maintain consistency across all your content. No more diluted messaging or confused audiences.
               </p>
               <dl className="mt-10 max-w-xl space-y-8 text-base leading-7 text-gray-600 lg:max-w-none">
                 {features.map((feature, index) => (
@@ -62,7 +62,7 @@ export default function SideBySide() {
                   >
                     <dt className="inline font-semibold text-gray-900 dark:text-white">
                       <feature.icon
-                        className="absolute left-3 top-5 h-6 w-6 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform"
+                        className="absolute left-3 top-5 h-6 w-6 text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform"
                         aria-hidden="true"
                       />
                       {feature.name}
