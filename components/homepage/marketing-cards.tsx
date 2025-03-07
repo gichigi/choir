@@ -6,9 +6,9 @@ import { ArrowUpRight } from "lucide-react";
 const FeatureData = [
   {
     id: 1,
-    name: "AI Style Guide",
+    name: "AI Style Guide That Actually Works",
     description:
-      "Check existing copy or generate new content aligned with your brand voice. Consistency is guaranteed across every word.",
+      "No more 'this doesn't sound like us' feedback. Choir checks if your content matches your brand voice—and fixes it if it doesn't.",
     svg: `
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-check"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="m9 9.5 2 2 4-4"/></svg>
     `,
@@ -17,9 +17,9 @@ const FeatureData = [
   },
   {
     id: 2,
-    name: "Brand Voice Content Generation",
+    name: "Content That Doesn't Scream 'AI'",
     description:
-      "Create blog posts, social media updates, email newsletters, landing pages, and more—always on-brand.",
+      "Blogs, social posts, emails—all with your unique flair. No more generic AI content that sounds like everyone else's.",
     svg: `
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-square-text"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M13 8H7"/><path d="M17 12H7"/></svg>
     `,
@@ -28,9 +28,9 @@ const FeatureData = [
   },
   {
     id: 3,
-    name: "Generate a Brand Voice in Minutes",
+    name: "5-Minute Brand Voice Setup",
     description:
-      "Answer a few quick questions about your business, and Choir crafts a unique voice profile.",
+      "Answer a few questions and you're done. It's like a brand workshop, minus the sticky notes and 8-hour meeting.",
     svg: `
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-wand-sparkles"><path d="m6 12 6-6 6 6-6 6-6-6Z"/><path d="m2 22 3-3"/><path d="M18 3h3v3"/><path d="m22 2-5 5"/><path d="M2 12h2"/><path d="M12 2v2"/><path d="m19 9 3 3"/></svg>
     `,
@@ -39,9 +39,9 @@ const FeatureData = [
   },
   {
     id: 4,
-    name: "Brand Voice Visualization",
+    name: "See Your Voice in Action",
     description:
-      "Instantly see where and how each brand voice element is applied in your content.",
+      "Choir highlights exactly how your brand voice is applied in each piece of content. It's like X-ray vision for your brand identity.",
     svg: `
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
     `,
@@ -50,9 +50,9 @@ const FeatureData = [
   },
   {
     id: 5,
-    name: "Content Library",
+    name: "Content Library (No More Lost Docs)",
     description:
-      "Quickly retrieve past generated content in one centralized location.",
+      "All your generated content in one place. No more digging through Google Docs, Slack messages, and 'where did I put that?' moments.",
     svg: `
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-library"><path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/></svg>
     `,
@@ -61,9 +61,9 @@ const FeatureData = [
   },
   {
     id: 6,
-    name: "Easily Tweak Output Details",
+    name: "Control Freaks Welcome",
     description:
-      "Unlike ChatGPT, you can easily control output length, reading age, and other parameters for perfectly tailored content.",
+      "Adjust reading level, tone, length, and more. Unlike ChatGPT, you won't need 17 reprompts to get what you actually want.",
     svg: `
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal"><path d="M21 10H3"/><path d="M16 14H3"/><path d="M8 6H3"/><path d="M18 6h3"/><path d="M12 18H3"/><path d="M16 18h5"/><circle cx="18" cy="10" r="2"/><circle cx="13" cy="14" r="2"/><circle cx="10" cy="6" r="2"/><circle cx="16" cy="18" r="2"/></svg>
     `,
@@ -78,10 +78,10 @@ export default function Features() {
       {/* Section Header */}
       <div className="text-center mb-16">
         <h2 className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 via-indigo-800 to-gray-900 dark:from-white dark:via-indigo-300 dark:to-white pb-2">
-          Key Features
+          Features That Actually Solve Problems
         </h2>
         <p className="text-gray-600 dark:text-gray-300 mt-4 max-w-2xl mx-auto">
-          Choir helps you maintain a consistent brand voice across all your marketing channels.
+          No fluff, no empty promises—just tools that make your content sound like you, not like a robot having an identity crisis.
         </p>
       </div>
 

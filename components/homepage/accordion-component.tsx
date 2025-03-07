@@ -10,20 +10,28 @@ import { motion } from "motion/react"
 
 const faqs = [
     {
-        question: "Do I get access to this landing page in the starter kit?",
-        answer: "Yes, this page isn't even a real landing page more so a template for you to build on."
+        question: "Is Choir just another AI writing tool?",
+        answer: "Nope. While other AI tools spit out generic content that sounds like everyone else's, Choir actually captures your unique brand voice. It's the difference between a custom suit and something off the rack that kinda-sorta fits if you squint."
     },
     {
-        question: "Is the starter kit regularly updated?",
-        answer: "Yes, we continuously update the starter kit with the latest features, security patches, and best practices to ensure you're always working with cutting-edge technology."
+        question: "How long does it take to create a brand voice?",
+        answer: "About 5 minutes, which is roughly 295 minutes faster than your typical brand workshop. Answer a few questions about your business, and our AI does the heavy lifting. No sticky notes, group exercises, or overpriced consultants required."
     },
     {
-        question: "Can I use this for commercial projects?",
-        answer: "Absolutely! The starter kit comes with a commercial license, allowing you to use it in both personal and commercial projects without any restrictions."
+        question: "Can I customize the content Choir generates?",
+        answer: "Absolutely! Unlike other AI tools where you're stuck playing the reprompting game, Choir lets you adjust reading level, tone, length, and more. Control freaks, rejoice—we built this for you."
     },
     {
-        question: "What kind of support do you provide?",
-        answer: "We offer comprehensive support through our Discord community, where you can get help from both our team and other developers using the starter kit."
+        question: "Will my customers know the content was AI-generated?",
+        answer: "Not unless you tell them. Choir content doesn't have that robotic 'I was written by AI' vibe. It actually sounds like a human who knows your brand wrote it—because that's exactly what we trained it to do."
+    },
+    {
+        question: "Do you offer a free trial?",
+        answer: "Yes! Our free plan lets you create one brand voice and generate up to 10 pieces of content per month. No credit card required, no surprise charges, no 'oops we forgot to tell you the trial ended' moments."
+    },
+    {
+        question: "How is Choir different from using ChatGPT?",
+        answer: "ChatGPT is like a Swiss Army knife—good at lots of things, master of none. Choir is a specialized tool built specifically for brand voice and content creation. Plus, we don't make you rewrite the same prompt 17 times to get what you want."
     }
 ]
 
@@ -37,7 +45,7 @@ export function AccordionComponent() {
                     <div className="mx-auto w-fit rounded-full border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-900/30 px-4 py-1 mb-6">
                         <div className="flex items-center gap-2 text-sm font-medium text-blue-900 dark:text-blue-200">
                             <HelpCircle className="h-4 w-4" />
-                            <span>FAQ</span>
+                            <span>Questions You Might Have</span>
                         </div>
                     </div>
 
@@ -45,7 +53,7 @@ export function AccordionComponent() {
                         Frequently Asked Questions
                     </h2>
                     <p className="text-gray-600 dark:text-gray-300 mt-4 max-w-2xl mx-auto">
-                        Everything you need to know about the Next.js Starter Kit. Can&apos;t find the answer you&apos;re looking for? Reach out to our team.
+                        Still have questions? We've got answers. And if you don't see what you're looking for, our support team actually responds (shocking, we know).
                     </p>
                 </div>
 

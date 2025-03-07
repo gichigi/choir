@@ -48,7 +48,7 @@ const PricingHeader = ({
     <div className="mx-auto w-fit rounded-full border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-900/30 px-4 py-1 mb-6">
       <div className="flex items-center gap-2 text-sm font-medium text-blue-900 dark:text-blue-200">
         <DollarSign className="h-4 w-4" />
-        <span>Pricing</span>
+        <span>Simple Pricing</span>
       </div>
     </div>
 
@@ -69,7 +69,7 @@ const PricingSwitch = ({ onSwitch }: PricingSwitchProps) => (
           Monthly
         </TabsTrigger>
         <TabsTrigger value="1" className="w-full">
-          Yearly
+          Yearly (Save 30%)
         </TabsTrigger>
       </TabsList>
     </Tabs>
@@ -93,8 +93,6 @@ const PricingCard = ({
   const getProCheckoutUrl = useAction(api.subscriptions.getProOnboardingCheckoutUrl);
   const subscriptionStatus = useQuery(api.subscriptions.getUserSubscriptionStatus);
 
-
-
   const handleCheckout = async (interval: "month" | "year") => {
     try {
       const checkoutProUrl = await getProCheckoutUrl({
@@ -108,7 +106,6 @@ const PricingCard = ({
       console.error("Failed to get checkout URL:", error);
     }
   };
-
 
   return (
     <Card
@@ -182,7 +179,7 @@ const PricingCard = ({
               router.push("/sign-in");
               return;
             }
-            handleCheckout("month")
+            handleCheckout(isYearly ? "year" : "month")
           }}
           className={cn("w-full", {
             "bg-blue-500 hover:bg-blue-400": popular,
@@ -204,28 +201,57 @@ export default function Pricing() {
 
   const plans = [
     {
+      title: "Free",
+      monthlyPrice: 0,
+      yearlyPrice: 0,
+      description: "For individuals who want to dip their toes in the water.",
+      features: [
+        "1 brand voice profile",
+        "10 content generations/month",
+        "Basic customization options",
+        "Email support (we actually reply)",
+      ],
+      actionLabel: "Start Free",
+      popular: false,
+    },
+    {
       title: "Pro",
       monthlyPrice: 12,
-      yearlyPrice: 100,
-      description: "Advanced features for growing teams and businesses.",
+      yearlyPrice: 99,
+      description: "For serious content creators who are tired of sounding generic.",
       features: [
-        "All Basic features",
-        "Up to 20 team members",
-        "50GB storage",
-        "Priority support",
-        "Advanced analytics",
+        "Unlimited brand voices",
+        "Unlimited content generations",
+        "Advanced customization controls",
+        "Priority support (like, actual humans)",
+        "Content library & organization",
       ],
       actionLabel: "Get Pro",
       popular: true,
     },
+    {
+      title: "Teams",
+      monthlyPrice: 49,
+      yearlyPrice: 490,
+      description: "For teams who need to keep everyone on the same page.",
+      features: [
+        "Everything in Pro",
+        "Team collaboration features",
+        "Shared content library",
+        "Brand voice consistency checks",
+        "Dedicated account manager",
+      ],
+      actionLabel: "Level Up Your Team",
+      exclusive: true,
+    }
   ];
 
   return (
-    <section className="px-4">
+    <section className="px-4 py-24 bg-gray-50 dark:bg-gray-900/50">
       <div className="max-w-7xl mx-auto">
         <PricingHeader
-          title="Choose Your Plan"
-          subtitle="Select the perfect plan for your needs. All plans include a 14-day free trial."
+          title="Pricing That Makes Sense"
+          subtitle="No hidden fees, no complicated tiers, no 'contact us for pricing' nonsense. Just pick a plan and get started."
         />
         <PricingSwitch onSwitch={togglePricingPeriod} />
         <motion.div
@@ -233,7 +259,7 @@ export default function Pricing() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           viewport={{ once: true }}
-          className="flex justify-center mt-10"
+          className="flex flex-col md:flex-row justify-center gap-6 mt-10"
         >
           {plans.map((plan) => (
             <PricingCard

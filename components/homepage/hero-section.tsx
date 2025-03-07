@@ -25,7 +25,7 @@ export default function HeroSection() {
         >
           <div className="flex items-center gap-2 text-sm font-medium text-indigo-900 dark:text-indigo-200">
             <Sparkles className="h-4 w-4" />
-            <span>AI-Powered Brand Voice Generator</span>
+            <span>AI That Actually Sounds Like You</span>
           </div>
         </motion.div>
 
@@ -37,7 +37,7 @@ export default function HeroSection() {
           className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-gray-900 via-indigo-800 to-gray-900 dark:from-white dark:via-indigo-300 dark:to-white animate-gradient-x pb-2"
         >
           Your Brand Voice, <br className="hidden sm:block" />
-          Amplified by AI
+          Not A ChatGPT Clone
         </motion.h1>
 
         {/* Subtitle */}
@@ -47,7 +47,7 @@ export default function HeroSection() {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto"
         >
-          Maintain a consistent brand voice across all channels. Choir captures your unique style and generates on-brand content in minutes, not hours.
+          Let's be real—keeping your brand voice consistent is a full-time job. Choir captures what makes you sound like you, then generates content that doesn't scream "I was written by AI!"
         </motion.p>
 
         {/* CTA Buttons */}
@@ -62,7 +62,7 @@ export default function HeroSection() {
               size="lg"
               className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-full px-8 h-12"
             >
-              Create Your Brand Voice
+              Stop Sounding Generic
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </Link>
@@ -76,7 +76,7 @@ export default function HeroSection() {
               size="lg"
               className="rounded-full px-8 h-12 border-2"
             >
-              View Pricing
+              See Pricing
               <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
             </Button>
           </Link>
@@ -87,7 +87,7 @@ export default function HeroSection() {
             aria-label="See how it works"
           >
             <MessageSquare className="w-5 h-5" aria-hidden="true" />
-            <span>See How It Works</span>
+            <span>How It Actually Works</span>
           </Link>
         </motion.div>
       </div>

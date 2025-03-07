@@ -8,17 +8,17 @@ const features = [
   {
     name: 'Generate a Brand Voice in Minutes',
     description:
-      'Answer a few quick questions about your business, and Choir crafts a unique voice profile that captures your brand essence.',
+      'Answer a few quick questions and our AI builds your voice profile. No 50-page brand guidelines that nobody reads anyway.',
     icon: Wand2,
   },
   {
-    name: 'Consistent Messaging Across Channels',
-    description: 'Eliminate inconsistencies in your brand communication. Choir ensures your voice remains consistent across all marketing channels.',
+    name: 'Content That Doesn\'t Sound AI-Generated',
+    description: 'Your customers can\'t tell the difference between Choir-generated content and your best copywriter (except Choir doesn\'t call in sick or ask for raises).',
     icon: MessageSquare,
   },
   {
-    name: 'Save Time and Resources',
-    description: 'Stop wasting hours manually enforcing style guidelines. Choir automates the process, letting you focus on strategy instead of execution.',
+    name: 'Save Your Sanity (and Time)',
+    description: 'Stop rewriting the same sentence five times to "make it sound more like us." Choir remembers your brand voice so you don\'t have to.',
     icon: FaRegClock,
   },
 ]
@@ -40,15 +40,15 @@ export default function SideBySide() {
               <div className="mb-6 w-fit rounded-full border border-indigo-200 dark:border-indigo-900 bg-indigo-50 dark:bg-indigo-900/30 px-4 py-1">
                 <div className="flex items-center gap-2 text-sm font-medium text-indigo-900 dark:text-indigo-200">
                   <Sparkles className="h-4 w-4" />
-                  <span>Why Choose Choir</span>
+                  <span>Why Choir Beats Generic AI</span>
                 </div>
               </div>
 
               <h2 className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 via-indigo-800 to-gray-900 dark:from-white dark:via-indigo-300 dark:to-white pb-2">
-                Your Brand Voice, Perfected
+                Finally, AI That Gets Your Brand
               </h2>
               <p className="mt-6 text-lg text-gray-600 dark:text-gray-300">
-                Choir captures your unique brand voice and helps you maintain consistency across all your content. No more diluted messaging or confused audiences.
+                If you're tired of AI-generated content that sounds like everyone else's, you're in the right place. Choir doesn't just capture your voice—it amplifies what makes you unique.
               </p>
               <dl className="mt-10 max-w-xl space-y-8 text-base leading-7 text-gray-600 lg:max-w-none">
                 {features.map((feature, index) => (
